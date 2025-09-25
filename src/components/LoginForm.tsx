@@ -91,15 +91,15 @@ export function LoginForm({ onLogin }: LoginFormProps) {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center space-x-2 mb-4">
             <BookOpen className="h-10 w-10 text-blue-600" />
-            <span className="text-2xl font-bold text-gray-900">StudyHub</span>
+            <span className="text-2xl font-bold text-gray-900">CORE</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
             {isLogin ? 'Welcome Back!' : 'Join StudyHub'}
           </h1>
           <p className="text-gray-600">
             {isLogin 
-              ? 'Sign in to access your productivity dashboard' 
-              : 'Create your account to get started'
+              ? 'Sign in to access your CORE dashboard' 
+              : 'Create your CORE account to get started'
             }
           </p>
         </div>

@@ -13,8 +13,9 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-              Your College Life,
-              <span className="text-blue-600"> Organized</span>
+              <span className="text-blue-600">CORE</span>
+              <br />
+              Your College Life, Organized
             </h1>
             <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
               Centralize deadlines, classes, and wellness in one beautiful hub. 
@@ -88,7 +89,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
       <div className="bg-blue-600 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
           <h2 className="text-3xl font-bold mb-4">Ready to transform your college experience?</h2>
-          <p className="text-xl mb-8 opacity-90">Join thousands of students who've found their perfect productivity-wellness balance.</p>
+          <p className="text-xl mb-8 opacity-90">Join thousands of students using CORE to find their perfect productivity-wellness balance.</p>
           <button
             onClick={onGetStarted}
             className="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors shadow-lg"

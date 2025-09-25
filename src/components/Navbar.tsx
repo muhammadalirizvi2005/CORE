@@ -24,7 +24,7 @@ export function Navbar({ currentView, onViewChange, currentUser, onLogout }: Nav
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-2">
             <BookOpen className="h-8 w-8 text-blue-600" />
-            <span className="text-xl font-bold text-gray-900">StudyHub</span>
+            <span className="text-xl font-bold text-gray-900">CORE</span>
           </div>
 
           {/* Desktop Navigation */}
