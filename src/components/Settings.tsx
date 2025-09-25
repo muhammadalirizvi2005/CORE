@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
 import { User, Bell, Calendar, Palette, Shield, HelpCircle, LogOut } from 'lucide-react';
 
-export function Settings() {
+interface SettingsProps {
+  currentUser: string;
+  onLogout: () => void;
+}
+
+export function Settings({ currentUser, onLogout }: SettingsProps) {
   const [notifications, setNotifications] = useState({
     taskReminders: true,
     wellnessCheckins: true,
@@ -32,7 +37,7 @@ export function Settings() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
               <input
                 type="text"
-                defaultValue="Jane Smith"
+                defaultValue={currentUser}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -41,7 +46,7 @@ export function Settings() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
               <input
                 type="email"
-                defaultValue="jane.smith@university.edu"
+                defaultValue={`${currentUser.toLowerCase()}@university.edu`}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -193,7 +198,10 @@ export function Settings() {
               </div>
             </button>
             
-            <button className="w-full text-left p-3 hover:bg-red-50 rounded-lg flex items-center text-red-600">
+            <button 
+              onClick={onLogout}
+              className="w-full text-left p-3 hover:bg-red-50 rounded-lg flex items-center text-red-600"
+            >
               <LogOut className="h-5 w-5 mr-3" />
               <div>
                 <h3 className="font-medium">Sign Out</h3>

@@ -10,7 +10,11 @@ interface Task {
   completed: boolean;
 }
 
-export function Dashboard() {
+interface DashboardProps {
+  currentUser: string;
+}
+
+export function Dashboard({ currentUser }: DashboardProps) {
   const [viewMode, setViewMode] = useState<'today' | 'week'>('today');
   const [showWallpaperModal, setShowWallpaperModal] = useState(false);
   const [selectedWallpaper, setSelectedWallpaper] = useState('default');
@@ -93,7 +97,7 @@ export function Dashboard() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
         <div>
           <h1 className={`text-3xl font-bold ${isDarkWallpaper ? 'text-white' : 'text-gray-900'}`}>Dashboard</h1>
-          <p className={`mt-1 ${isDarkWallpaper ? 'text-gray-300' : 'text-gray-600'}`}>Welcome back, Jane! You have 4 tasks due this week.</p>
+          <p className={`mt-1 ${isDarkWallpaper ? 'text-gray-300' : 'text-gray-600'}`}>Welcome back, {currentUser}! You have 4 tasks due this week.</p>
         </div>
         
         <div className="flex items-center space-x-4 mt-4 sm:mt-0">
