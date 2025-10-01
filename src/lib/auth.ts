@@ -53,6 +53,27 @@ export const authService = {
     try {
       const passwordHash = await hashPassword(userData.password);
       
+      // Check if username or email already exists
+      const { data: existingUsers, error: checkError } = await supabase
+        .from('users')
+        .select('username, email')
+        .or(`username.eq.${userData.username},email.eq.${userData.email}`);
+
+      if (checkError) {
+        console.error('Error checking existing users:', checkError);
+        return { user: null, error: 'Registration failed. Please try again.' };
+      }
+
+      if (existingUsers && existingUsers.length > 0) {
+        const existingUser = existingUsers[0];
+        if (existingUser.username === userData.username) {
+          return { user: null, error: 'Username already exists' };
+        }
+        if (existingUser.email === userData.email) {
+          return { user: null, error: 'Email already exists' };
+        }
+      }
+
       const { data, error } = await supabase
         .from('users')
         .insert([
@@ -64,19 +85,17 @@ export const authService = {
           }
         ])
         .select()
-        .single();
+        .limit(1);
 
-      if (error) {
-        if (error.code === '23505') { // Unique constraint violation
-          return { user: null, error: 'Username or email already exists' };
-        }
+      if (error || !data || data.length === 0) {
+        console.error('Registration error:', error);
         return { user: null, error: 'Registration failed. Please try again.' };
       }
 
       // Store user in localStorage for persistence
-      localStorage.setItem('currentUser', JSON.stringify(data));
+      localStorage.setItem('currentUser', JSON.stringify(data[0]));
       
-      return { user: data, error: null };
+      return { user: data[0], error: null };
     } catch (error) {
       console.error('Registration error:', error);
       return { user: null, error: 'Registration failed. Please try again.' };
