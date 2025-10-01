@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { BookOpen, Eye, EyeOff, User, Lock } from 'lucide-react';
+import { authService } from '../lib/auth';
+import type { User as UserType } from '../lib/supabase';
 
 interface LoginFormProps {
-  onLogin: (username: string) => void;
+  onLogin: (user: UserType) => void;
 }
 
 export function LoginForm({ onLogin }: LoginFormProps) {
@@ -59,22 +61,39 @@ export function LoginForm({ onLogin }: LoginFormProps) {
     if (!validateForm()) return;
 
     setIsLoading(true);
+    setErrors({});
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
       if (isLogin) {
-        // Mock login validation
-        if (formData.username === 'demo' && formData.password === 'password') {
-          onLogin(formData.username);
+        const { user, error } = await authService.login({
+          username: formData.username,
+          password: formData.password,
+        });
+        
+        if (error || !user) {
+          setErrors({ general: error || 'Login failed' });
         } else {
-          setErrors({ general: 'Invalid username or password' });
+          onLogin(user);
         }
       } else {
-        // Mock registration
-        onLogin(formData.username);
+        const { user, error } = await authService.register({
+          username: formData.username,
+          email: formData.email,
+          fullName: formData.fullName,
+          password: formData.password,
+        });
+        
+        if (error || !user) {
+          setErrors({ general: error || 'Registration failed' });
+        } else {
+          onLogin(user);
+        }
       }
+    } catch (error) {
+      setErrors({ general: 'An unexpected error occurred' });
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -275,15 +294,17 @@ export function LoginForm({ onLogin }: LoginFormProps) {
           </div>
 
           {/* Demo Credentials */}
-          {isLogin && (
-            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-800 font-medium mb-2">Demo Credentials:</p>
-              <p className="text-sm text-blue-700">
-                Username: <code className="bg-blue-100 px-1 rounded">demo</code><br />
-                Password: <code className="bg-blue-100 px-1 rounded">password</code>
-              </p>
-            </div>
-          )}
+          <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-800 font-medium mb-2">
+              {isLogin ? 'New to CORE?' : 'Already have an account?'}
+            </p>
+            <p className="text-sm text-blue-700">
+              {isLogin 
+                ? 'Create an account to get started with your personalized productivity hub!'
+                : 'Sign in to access your existing CORE dashboard and data.'
+              }
+            </p>
+          </div>
         </div>
       </div>
     </div>
