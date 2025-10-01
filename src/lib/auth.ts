@@ -33,16 +33,16 @@ export const authService = {
         .select('*')
         .eq('username', credentials.username)
         .eq('password_hash', passwordHash)
-        .single();
+        .limit(1);
 
-      if (error || !data) {
+      if (error || !data || data.length === 0) {
         return { user: null, error: 'Invalid username or password' };
       }
 
       // Store user in localStorage for persistence
-      localStorage.setItem('currentUser', JSON.stringify(data));
+      localStorage.setItem('currentUser', JSON.stringify(data[0]));
       
-      return { user: data, error: null };
+      return { user: data[0], error: null };
     } catch (error) {
       console.error('Login error:', error);
       return { user: null, error: 'Login failed. Please try again.' };
