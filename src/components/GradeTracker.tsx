@@ -1,77 +1,79 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BookOpen, TrendingUp, Target, Award, Plus, CreditCard as Edit, Trash2 } from 'lucide-react';
-
-interface Course {
-  id: string;
-  name: string;
-  code: string;
-  credits: number;
-  currentGrade: number;
-  targetGrade: number;
-  color: string;
-  assignments: Assignment[];
-}
-
-interface Assignment {
-  id: string;
-  name: string;
-  category: 'exam' | 'homework' | 'project' | 'quiz' | 'participation';
-  score: number;
-  maxScore: number;
-  weight: number;
-  date: Date;
-}
+import { databaseService, type Course, type Assignment } from '../lib/database';
+import { authService } from '../lib/auth';
 
 export function GradeTracker() {
   const [showAddCourse, setShowAddCourse] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<string>('');
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newCourse, setNewCourse] = useState({
+    name: '',
+    code: '',
+    credits: 3,
+    target_grade: 90,
+    color: 'bg-blue-500'
+  });
 
-  const mockCourses: Course[] = [
-    {
-      id: '1',
-      name: 'Data Structures & Algorithms',
-      code: 'CS 201',
-      credits: 4,
-      currentGrade: 87.5,
-      targetGrade: 90,
-      color: 'bg-blue-500',
-      assignments: [
-        { id: '1', name: 'Midterm Exam', category: 'exam', score: 85, maxScore: 100, weight: 25, date: new Date(2024, 0, 10) },
-        { id: '2', name: 'Binary Tree Assignment', category: 'homework', score: 92, maxScore: 100, weight: 15, date: new Date(2024, 0, 5) },
-        { id: '3', name: 'Algorithm Analysis Project', category: 'project', score: 88, maxScore: 100, weight: 20, date: new Date(2024, 0, 12) }
-      ]
-    },
-    {
-      id: '2',
-      name: 'Organic Chemistry',
-      code: 'CHEM 301',
-      credits: 3,
-      currentGrade: 82.3,
-      targetGrade: 85,
-      color: 'bg-green-500',
-      assignments: [
-        { id: '4', name: 'Mechanisms Quiz', category: 'quiz', score: 78, maxScore: 100, weight: 10, date: new Date(2024, 0, 8) },
-        { id: '5', name: 'Lab Report 1', category: 'homework', score: 90, maxScore: 100, weight: 15, date: new Date(2024, 0, 6) },
-        { id: '6', name: 'Synthesis Project', category: 'project', score: 85, maxScore: 100, weight: 25, date: new Date(2024, 0, 14) }
-      ]
-    },
-    {
-      id: '3',
-      name: 'Calculus II',
-      code: 'MATH 152',
-      credits: 4,
-      currentGrade: 91.2,
-      targetGrade: 92,
-      color: 'bg-purple-500',
-      assignments: [
-        { id: '7', name: 'Integration Test', category: 'exam', score: 94, maxScore: 100, weight: 30, date: new Date(2024, 0, 9) },
-        { id: '8', name: 'Series Homework', category: 'homework', score: 89, maxScore: 100, weight: 20, date: new Date(2024, 0, 11) }
-      ]
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const user = authService.getCurrentUser();
+      if (user) {
+        const [coursesData, assignmentsData] = await Promise.all([
+          databaseService.getCourses(user.id),
+          databaseService.getAssignments(user.id)
+        ]);
+        setCourses(coursesData);
+        setAssignments(assignmentsData);
+      }
+    } catch (error) {
+      console.error('Error loading grade data:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const handleCreateCourse = async () => {
+    try {
+      const user = authService.getCurrentUser();
+      if (!user || !newCourse.name.trim() || !newCourse.code.trim()) return;
+
+      const courseData = {
+        name: newCourse.name,
+        code: newCourse.code,
+        credits: newCourse.credits,
+        current_grade: 0,
+        target_grade: newCourse.target_grade,
+        color: newCourse.color
+      };
+
+      const createdCourse = await databaseService.createCourse(user.id, courseData);
+      setCourses(prev => [...prev, createdCourse]);
+      setShowAddCourse(false);
+      setNewCourse({
+        name: '',
+        code: '',
+        credits: 3,
+        target_grade: 90,
+        color: 'bg-blue-500'
+      });
+    } catch (error) {
+      console.error('Error creating course:', error);
+    }
+  };
+
+  const getCourseAssignments = (courseId: string) => {
+    return assignments.filter(assignment => assignment.course_id === courseId);
+  };
 
   const calculateGPA = (courses: Course[]) => {
-    const totalPoints = courses.reduce((sum, course) => sum + (course.currentGrade / 100 * 4 * course.credits), 0);
+    const totalPoints = courses.reduce((sum, course) => sum + (course.current_grade / 100 * 4 * course.credits), 0);
     const totalCredits = courses.reduce((sum, course) => sum + course.credits, 0);
     return totalCredits > 0 ? totalPoints / totalCredits : 0;
   };
@@ -94,7 +96,7 @@ export function GradeTracker() {
     }
   };
 
-  const currentGPA = calculateGPA(mockCourses);
+  const currentGPA = calculateGPA(courses);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -130,7 +132,7 @@ export function GradeTracker() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-green-600 text-sm font-medium">Total Credits</p>
-              <p className="text-3xl font-bold text-green-900">{mockCourses.reduce((sum, course) => sum + course.credits, 0)}</p>
+              <p className="text-3xl font-bold text-green-900">{courses.reduce((sum, course) => sum + course.credits, 0)}</p>
             </div>
             <BookOpen className="h-8 w-8 text-green-600" />
           </div>
@@ -140,7 +142,7 @@ export function GradeTracker() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-purple-600 text-sm font-medium">Courses</p>
-              <p className="text-3xl font-bold text-purple-900">{mockCourses.length}</p>
+              <p className="text-3xl font-bold text-purple-900">{courses.length}</p>
             </div>
             <Target className="h-8 w-8 text-purple-600" />
           </div>
@@ -159,7 +161,25 @@ export function GradeTracker() {
 
       {/* Course Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-        {mockCourses.map((course) => (
+        {loading ? (
+          <div className="col-span-full text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading courses...</p>
+          </div>
+        ) : courses.length === 0 ? (
+          <div className="col-span-full text-center py-12">
+            <p className="text-gray-600 mb-4">No courses added yet.</p>
+            <button
+              onClick={() => setShowAddCourse(true)}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Add Your First Course
+            </button>
+          </div>
+        ) : (
+        courses.map((course) => {
+          const courseAssignments = getCourseAssignments(course.id);
+          return (
           <div key={course.id} className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-6">
             {/* Course Header */}
             <div className="flex items-start justify-between mb-4">
@@ -181,21 +201,21 @@ export function GradeTracker() {
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium text-gray-700">Current Grade</span>
-                <span className={`text-lg font-bold ${getGradeColor(course.currentGrade)}`}>
-                  {course.currentGrade.toFixed(1)}%
+                <span className={`text-lg font-bold ${getGradeColor(course.current_grade)}`}>
+                  {course.current_grade.toFixed(1)}%
                 </span>
               </div>
               
               <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
                 <div
                   className={`h-2 rounded-full ${course.color}`}
-                  style={{ width: `${course.currentGrade}%` }}
+                  style={{ width: `${course.current_grade}%` }}
                 />
               </div>
               
               <div className="flex justify-between text-xs text-gray-500">
-                <span>Target: {course.targetGrade}%</span>
-                <span>{course.currentGrade >= course.targetGrade ? '🎯 On Track' : '📈 Need Improvement'}</span>
+                <span>Target: {course.target_grade}%</span>
+                <span>{course.current_grade >= course.target_grade ? '🎯 On Track' : '📈 Need Improvement'}</span>
               </div>
             </div>
 
@@ -203,27 +223,28 @@ export function GradeTracker() {
             <div>
               <h4 className="text-sm font-medium text-gray-700 mb-2">Recent Assignments</h4>
               <div className="space-y-2">
-                {course.assignments.slice(0, 3).map((assignment) => (
+                {courseAssignments.slice(0, 3).map((assignment) => (
                   <div key={assignment.id} className="flex items-center justify-between text-sm">
                     <div className="flex items-center space-x-2">
                       <span>{getCategoryIcon(assignment.category)}</span>
                       <span className="text-gray-600 truncate">{assignment.name}</span>
                     </div>
-                    <span className={`font-medium ${getGradeColor((assignment.score / assignment.maxScore) * 100)}`}>
-                      {assignment.score}/{assignment.maxScore}
+                    <span className={`font-medium ${getGradeColor((assignment.score / assignment.max_score) * 100)}`}>
+                      {assignment.score}/{assignment.max_score}
                     </span>
                   </div>
                 ))}
               </div>
               
-              {course.assignments.length > 3 && (
+              {courseAssignments.length > 3 && (
                 <button className="text-blue-600 text-xs mt-2 hover:text-blue-700">
-                  View all {course.assignments.length} assignments
+                  View all {courseAssignments.length} assignments
                 </button>
               )}
             </div>
           </div>
-        ))}
+          );
+        }))}
       </div>
 
       {/* Grade Distribution Chart */}
@@ -235,18 +256,18 @@ export function GradeTracker() {
           <div>
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Current Grades</h3>
             <div className="space-y-3">
-              {mockCourses.map((course) => (
+              {courses.map((course) => (
                 <div key={course.id} className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <div className={`w-4 h-4 rounded ${course.color}`}></div>
                     <span className="text-sm font-medium text-gray-700">{course.code}</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <span className={`text-sm font-bold ${getGradeColor(course.currentGrade)}`}>
-                      {course.currentGrade.toFixed(1)}%
+                    <span className={`text-sm font-bold ${getGradeColor(course.current_grade)}`}>
+                      {course.current_grade.toFixed(1)}%
                     </span>
                     <span className="text-xs text-gray-500">
-                      ({((course.currentGrade / 100) * 4).toFixed(2)} GPA)
+                      ({((course.current_grade / 100) * 4).toFixed(2)} GPA)
                     </span>
                   </div>
                 </div>
@@ -310,6 +331,8 @@ export function GradeTracker() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Course Code</label>
                 <input
                   type="text"
+                  value={newCourse.code}
+                  onChange={(e) => setNewCourse(prev => ({ ...prev, code: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g., CS 301"
                 />
@@ -319,6 +342,8 @@ export function GradeTracker() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Course Name</label>
                 <input
                   type="text"
+                  value={newCourse.name}
+                  onChange={(e) => setNewCourse(prev => ({ ...prev, name: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g., Advanced Algorithms"
                 />
@@ -331,7 +356,8 @@ export function GradeTracker() {
                     type="number"
                     min="1"
                     max="6"
-                    defaultValue="3"
+                    value={newCourse.credits}
+                    onChange={(e) => setNewCourse(prev => ({ ...prev, credits: Number(e.target.value) }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -342,7 +368,8 @@ export function GradeTracker() {
                     type="number"
                     min="0"
                     max="100"
-                    defaultValue="90"
+                    value={newCourse.target_grade}
+                    onChange={(e) => setNewCourse(prev => ({ ...prev, target_grade: Number(e.target.value) }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -357,7 +384,7 @@ export function GradeTracker() {
                 Cancel
               </button>
               <button
-                onClick={() => setShowAddCourse(false)}
+                onClick={handleCreateCourse}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Add Course
