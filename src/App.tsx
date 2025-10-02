@@ -7,11 +7,14 @@ import { TaskManager } from './components/TaskManager';
 import { WellnessTracker } from './components/WellnessTracker';
 import { Analytics } from './components/Analytics';
 import { Settings } from './components/Settings';
+import { PomodoroTimer } from './components/PomodoroTimer';
+import { StudyGroups } from './components/StudyGroups';
+import { GradeTracker } from './components/GradeTracker';
 import { Navbar } from './components/Navbar';
 import { authService } from './lib/auth';
 import type { User } from './lib/supabase';
 
-export type ViewType = 'landing' | 'login' | 'dashboard' | 'tasks' | 'wellness' | 'analytics' | 'settings';
+export type ViewType = 'landing' | 'login' | 'dashboard' | 'tasks' | 'wellness' | 'analytics' | 'settings' | 'pomodoro' | 'study-groups' | 'grades';
 
 function App() {
   const [currentView, setCurrentView] = useState<ViewType>('landing');
@@ -61,6 +64,12 @@ function App() {
         return <Analytics />;
       case 'settings':
         return <Settings currentUser={currentUser?.full_name || ''} onLogout={handleLogout} />;
+      case 'pomodoro':
+        return <PomodoroTimer />;
+      case 'study-groups':
+        return <StudyGroups />;
+      case 'grades':
+        return <GradeTracker />;
       default:
         return <Dashboard />;
     }

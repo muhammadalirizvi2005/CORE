@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, CheckSquare, Heart, BarChart3, Settings, BookOpen, LogOut, ChevronDown } from 'lucide-react';
+import { Home, CheckSquare, Heart, BarChart3, Settings, BookOpen, LogOut, ChevronDown, Clock, Users, GraduationCap } from 'lucide-react';
 import type { ViewType } from '../App';
 
 interface NavbarProps {
@@ -13,7 +13,10 @@ export function Navbar({ currentView, onViewChange, currentUser, onLogout }: Nav
   const navItems = [
     { id: 'dashboard' as ViewType, icon: Home, label: 'Dashboard' },
     { id: 'tasks' as ViewType, icon: CheckSquare, label: 'Tasks' },
+    { id: 'pomodoro' as ViewType, icon: Clock, label: 'Pomodoro' },
     { id: 'wellness' as ViewType, icon: Heart, label: 'Wellness' },
+    { id: 'study-groups' as ViewType, icon: Users, label: 'Study Groups' },
+    { id: 'grades' as ViewType, icon: GraduationCap, label: 'Grades' },
     { id: 'analytics' as ViewType, icon: BarChart3, label: 'Analytics' },
     { id: 'settings' as ViewType, icon: Settings, label: 'Settings' },
   ];
