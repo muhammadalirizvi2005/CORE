@@ -1,51 +1,90 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Search, Filter, Calendar, Clock, AlertTriangle } from 'lucide-react';
-
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  category: 'class' | 'work' | 'extracurricular' | 'personal';
-  priority: 'high' | 'medium' | 'low';
-  dueDate: Date;
-  completed: boolean;
-  course?: string;
-}
+import { databaseService, type Task } from '../lib/database';
+import { authService } from '../lib/auth';
 
 export function TaskManager() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [filter, setFilter] = useState<'all' | 'class' | 'work' | 'extracurricular' | 'personal'>('all');
-  const mockTasks: Task[] = [
-    {
-      id: '1',
-      title: 'Data Structures Assignment',
-      description: 'Implement binary search tree with insertion and deletion methods',
-      category: 'class',
-      priority: 'high',
-      dueDate: new Date(2024, 0, 15),
-      completed: false,
-      course: 'CS 201'
-    },
-    {
-      id: '2',
-      title: 'Biology Lab Report',
-      description: 'Write lab report on enzyme kinetics experiment',
-      category: 'class',
-      priority: 'medium',
-      dueDate: new Date(2024, 0, 18),
-      completed: false,
-      course: 'BIO 150'
-    },
-    {
-      id: '3',
-      title: 'Job Application - Google',
-      description: 'Submit application for summer internship program',
-      category: 'work',
-      priority: 'high',
-      dueDate: new Date(2024, 0, 20),
-      completed: false,
-    },
-  ];
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newTask, setNewTask] = useState({
+    title: '',
+    description: '',
+    category: 'class' as Task['category'],
+    priority: 'medium' as Task['priority'],
+    due_date: '',
+    course_code: ''
+  });
+
+  useEffect(() => {
+    loadTasks();
+  }, []);
+
+  const loadTasks = async () => {
+    try {
+      const user = authService.getCurrentUser();
+      if (user) {
+        const userTasks = await databaseService.getTasks(user.id);
+        setTasks(userTasks);
+      }
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateTask = async () => {
+    try {
+      const user = authService.getCurrentUser();
+      if (!user || !newTask.title.trim()) return;
+
+      const taskData = {
+        title: newTask.title,
+        description: newTask.description,
+        category: newTask.category,
+        priority: newTask.priority,
+        due_date: newTask.due_date || null,
+        course_code: newTask.course_code,
+        completed: false
+      };
+
+      const createdTask = await databaseService.createTask(user.id, taskData);
+      setTasks(prev => [createdTask, ...prev]);
+      setShowAddModal(false);
+      setNewTask({
+        title: '',
+        description: '',
+        category: 'class',
+        priority: 'medium',
+        due_date: '',
+        course_code: ''
+      });
+    } catch (error) {
+      console.error('Error creating task:', error);
+    }
+  };
+
+  const toggleTaskComplete = async (taskId: string, completed: boolean) => {
+    try {
+      await databaseService.updateTask(taskId, { completed });
+      setTasks(prev => prev.map(task => 
+        task.id === taskId ? { ...task, completed } : task
+      ));
+    } catch (error) {
+      console.error('Error updating task:', error);
+    }
+  };
+
+  const deleteTask = async (taskId: string) => {
+    try {
+      await databaseService.deleteTask(taskId);
+      setTasks(prev => prev.filter(task => task.id !== taskId));
+    } catch (error) {
+      console.error('Error deleting task:', error);
+    }
+  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -66,7 +105,7 @@ export function TaskManager() {
     }
   };
 
-  const filteredTasks = filter === 'all' ? mockTasks : mockTasks.filter(task => task.category === filter);
+  const filteredTasks = filter === 'all' ? tasks : tasks.filter(task => task.category === filter);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -128,13 +167,29 @@ export function TaskManager() {
 
       {/* Task List */}
       <div className="space-y-4">
-        {filteredTasks.map((task) => (
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading tasks...</p>
+          </div>
+        ) : filteredTasks.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-600 mb-4">No tasks found.</p>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Create Your First Task
+            </button>
+          </div>
+        ) : (
+        filteredTasks.map((task) => (
           <div key={task.id} className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start space-x-4">
               <input
                 type="checkbox"
                 checked={task.completed}
-                onChange={() => {}}
+                onChange={(e) => toggleTaskComplete(task.id, e.target.checked)}
                 className="mt-1 h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
               />
               
@@ -151,17 +206,17 @@ export function TaskManager() {
                   </div>
                 </div>
                 
-                {task.course && (
-                  <p className="text-sm text-blue-600 font-medium mb-2">{task.course}</p>
+                {task.course_code && (
+                  <p className="text-sm text-blue-600 font-medium mb-2">{task.course_code}</p>
                 )}
                 
                 <p className="text-gray-600 mb-4">{task.description}</p>
                 
                 <div className="flex items-center text-sm text-gray-500">
                   <Calendar className="h-4 w-4 mr-1" />
-                  <span>Due {task.dueDate.toLocaleDateString()}</span>
+                  <span>{task.due_date ? `Due ${new Date(task.due_date).toLocaleDateString()}` : 'No due date'}</span>
                   <Clock className="h-4 w-4 ml-4 mr-1" />
-                  <span>{Math.ceil((task.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days left</span>
+                  <span>{task.due_date ? `${Math.ceil((new Date(task.due_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days left` : 'No deadline'}</span>
                 </div>
               </div>
               
@@ -169,13 +224,17 @@ export function TaskManager() {
                 <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
                   Edit
                 </button>
-                <button className="text-red-600 hover:text-red-800 text-sm font-medium">
+                <button 
+                  onClick={() => deleteTask(task.id)}
+                  className="text-red-600 hover:text-red-800 text-sm font-medium"
+                >
                   Delete
                 </button>
               </div>
             </div>
           </div>
-        ))}
+        ))
+        )}
       </div>
 
       {/* Add Task Modal Placeholder */}
@@ -183,7 +242,81 @@ export function TaskManager() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-md">
             <h2 className="text-xl font-bold text-gray-900 mb-4">Add New Task</h2>
-            <p className="text-gray-600 mb-4">Task creation form would go here...</p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
+                <input
+                  type="text"
+                  value={newTask.title}
+                  onChange={(e) => setNewTask(prev => ({ ...prev, title: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter task title"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <textarea
+                  value={newTask.description}
+                  onChange={(e) => setNewTask(prev => ({ ...prev, description: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                  placeholder="Enter task description"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                  <select
+                    value={newTask.category}
+                    onChange={(e) => setNewTask(prev => ({ ...prev, category: e.target.value as Task['category'] }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="class">Class</option>
+                    <option value="work">Work</option>
+                    <option value="extracurricular">Extracurricular</option>
+                    <option value="personal">Personal</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                  <select
+                    value={newTask.priority}
+                    onChange={(e) => setNewTask(prev => ({ ...prev, priority: e.target.value as Task['priority'] }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
+                <input
+                  type="datetime-local"
+                  value={newTask.due_date}
+                  onChange={(e) => setNewTask(prev => ({ ...prev, due_date: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Course Code (optional)</label>
+                <input
+                  type="text"
+                  value={newTask.course_code}
+                  onChange={(e) => setNewTask(prev => ({ ...prev, course_code: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., CS 201"
+                />
+              </div>
+            </div>
+            
             <div className="flex space-x-3">
               <button
                 onClick={() => setShowAddModal(false)}
@@ -192,7 +325,7 @@ export function TaskManager() {
                 Cancel
               </button>
               <button
-                onClick={() => setShowAddModal(false)}
+                onClick={handleCreateTask}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 Add Task

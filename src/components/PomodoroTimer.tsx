@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Play, Pause, RotateCcw, Coffee, Brain, Settings } from 'lucide-react';
+import { databaseService } from '../lib/database';
+import { authService } from '../lib/auth';
 
 export function PomodoroTimer() {
   const [timeLeft, setTimeLeft] = useState(25 * 60); // 25 minutes in seconds
@@ -29,6 +31,10 @@ export function PomodoroTimer() {
     } else if (timeLeft === 0) {
       // Timer finished
       setIsActive(false);
+      
+      // Save completed session to database
+      saveSession(true);
+      
       if (mode === 'work') {
         setSessions(prev => prev + 1);
         // Auto-switch to break
@@ -55,6 +61,22 @@ export function PomodoroTimer() {
     };
   }, [isActive, timeLeft, mode, sessions]);
 
+  const saveSession = async (completed: boolean) => {
+    try {
+      const user = authService.getCurrentUser();
+      if (user) {
+        await databaseService.createPomodoroSession(user.id, {
+          session_type: mode,
+          duration_minutes: modes[mode].duration / 60,
+          completed,
+          task_id: null
+        });
+      }
+    } catch (error) {
+      console.error('Error saving pomodoro session:', error);
+    }
+  };
+
   const toggleTimer = () => {
     setIsActive(!isActive);
     
@@ -67,6 +89,11 @@ export function PomodoroTimer() {
   const resetTimer = () => {
     setIsActive(false);
     setTimeLeft(modes[mode].duration);
+    
+    // Save incomplete session if there was progress
+    if (timeLeft < modes[mode].duration) {
+      saveSession(false);
+    }
   };
 
   const switchMode = (newMode: 'work' | 'shortBreak' | 'longBreak') => {

@@ -1,14 +1,8 @@
 import React, { useState } from 'react';
+import { useEffect } from 'react';
 import { Calendar, Clock, AlertTriangle, Plus, BookOpen, Briefcase, Users, Coffee, Image, X } from 'lucide-react';
-
-interface Task {
-  id: string;
-  title: string;
-  category: 'class' | 'work' | 'extracurricular' | 'personal';
-  priority: 'high' | 'medium' | 'low';
-  dueDate: Date;
-  completed: boolean;
-}
+import { databaseService, type Task } from '../lib/database';
+import { authService } from '../lib/auth';
 
 interface DashboardProps {
   currentUser: string;
@@ -18,6 +12,8 @@ export function Dashboard({ currentUser }: DashboardProps) {
   const [viewMode, setViewMode] = useState<'today' | 'week'>('today');
   const [showWallpaperModal, setShowWallpaperModal] = useState(false);
   const [selectedWallpaper, setSelectedWallpaper] = useState('default');
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const wallpapers = [
     { id: 'default', name: 'Default', preview: 'bg-gray-50' },
@@ -35,40 +31,34 @@ export function Dashboard({ currentUser }: DashboardProps) {
     return wallpaper ? wallpaper.preview : 'bg-gray-50';
   };
 
-  const mockTasks: Task[] = [
-    {
-      id: '1',
-      title: 'Computer Science Assignment 3',
-      category: 'class',
-      priority: 'high',
-      dueDate: new Date(2024, 0, 15),
-      completed: false,
-    },
-    {
-      id: '2',
-      title: 'Study for Biology Midterm',
-      category: 'class',
-      priority: 'high',
-      dueDate: new Date(2024, 0, 16),
-      completed: false,
-    },
-    {
-      id: '3',
-      title: 'Complete internship application',
-      category: 'work',
-      priority: 'medium',
-      dueDate: new Date(2024, 0, 18),
-      completed: false,
-    },
-    {
-      id: '4',
-      title: 'Club meeting preparation',
-      category: 'extracurricular',
-      priority: 'low',
-      dueDate: new Date(2024, 0, 17),
-      completed: false,
-    },
-  ];
+  useEffect(() => {
+    loadTasks();
+  }, []);
+
+  const loadTasks = async () => {
+    try {
+      const user = authService.getCurrentUser();
+      if (user) {
+        const userTasks = await databaseService.getTasks(user.id);
+        setTasks(userTasks);
+      }
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleTaskComplete = async (taskId: string, completed: boolean) => {
+    try {
+      await databaseService.updateTask(taskId, { completed });
+      setTasks(prev => prev.map(task => 
+        task.id === taskId ? { ...task, completed } : task
+      ));
+    } catch (error) {
+      console.error('Error updating task:', error);
+    }
+  };
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
@@ -142,10 +132,39 @@ export function Dashboard({ currentUser }: DashboardProps) {
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         {[
-          { label: 'Tasks Due Today', value: '3', icon: Clock, color: 'text-blue-600 bg-blue-50' },
-          { label: 'This Week', value: '8', icon: Calendar, color: 'text-green-600 bg-green-50' },
-          { label: 'High Priority', value: '2', icon: AlertTriangle, color: 'text-red-600 bg-red-50' },
-          { label: 'Completed Today', value: '5', icon: BookOpen, color: 'text-purple-600 bg-purple-50' },
+          { 
+            label: 'Tasks Due Today', 
+            value: tasks.filter(task => {
+              if (!task.due_date) return false;
+              const today = new Date().toDateString();
+              return new Date(task.due_date).toDateString() === today;
+            }).length.toString(), 
+            icon: Clock, 
+            color: 'text-blue-600 bg-blue-50' 
+          },
+          { 
+            label: 'This Week', 
+            value: tasks.filter(task => {
+              if (!task.due_date) return false;
+              const weekFromNow = new Date();
+              weekFromNow.setDate(weekFromNow.getDate() + 7);
+              return new Date(task.due_date) <= weekFromNow;
+            }).length.toString(), 
+            icon: Calendar, 
+            color: 'text-green-600 bg-green-50' 
+          },
+          { 
+            label: 'High Priority', 
+            value: tasks.filter(task => task.priority === 'high' && !task.completed).length.toString(), 
+            icon: AlertTriangle, 
+            color: 'text-red-600 bg-red-50' 
+          },
+          { 
+            label: 'Completed', 
+            value: tasks.filter(task => task.completed).length.toString(), 
+            icon: BookOpen, 
+            color: 'text-purple-600 bg-purple-50' 
+          },
         ].map((stat, index) => (
           <div key={index} className={`p-6 rounded-xl shadow-sm backdrop-blur-sm ${
             isDarkWallpaper ? 'bg-gray-800/80 border border-gray-700' : 'bg-white/80'
@@ -174,7 +193,15 @@ export function Dashboard({ currentUser }: DashboardProps) {
           </h2>
           
           <div className="space-y-4">
-            {mockTasks.map((task) => (
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p className={`mt-2 text-sm ${isDarkWallpaper ? 'text-gray-400' : 'text-gray-600'}`}>Loading tasks...</p>
+              </div>
+            ) : tasks.length === 0 ? (
+              <p className={`text-center py-8 ${isDarkWallpaper ? 'text-gray-400' : 'text-gray-600'}`}>No tasks yet. Create your first task to get started!</p>
+            ) : (
+            tasks.slice(0, 5).map((task) => (
               <div key={task.id} className={`flex items-center space-x-4 p-4 border rounded-lg hover:shadow-sm transition-all ${
                 isDarkWallpaper 
                   ? 'border-gray-600 hover:bg-gray-700/50' 
@@ -183,7 +210,7 @@ export function Dashboard({ currentUser }: DashboardProps) {
                 <input
                   type="checkbox"
                   checked={task.completed}
-                  onChange={() => {}}
+                  onChange={(e) => toggleTaskComplete(task.id, e.target.checked)}
                   className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
                 />
                 
@@ -194,7 +221,7 @@ export function Dashboard({ currentUser }: DashboardProps) {
                 <div className="flex-1 min-w-0">
                   <h3 className={`text-sm font-medium truncate ${isDarkWallpaper ? 'text-white' : 'text-gray-900'}`}>{task.title}</h3>
                   <p className={`text-xs mt-1 ${isDarkWallpaper ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Due {task.dueDate.toLocaleDateString()}
+                    {task.due_date ? `Due ${new Date(task.due_date).toLocaleDateString()}` : 'No due date'}
                   </p>
                 </div>
                 
@@ -203,6 +230,7 @@ export function Dashboard({ currentUser }: DashboardProps) {
                 </span>
               </div>
             ))}
+            )}
           </div>
         </div>
 
