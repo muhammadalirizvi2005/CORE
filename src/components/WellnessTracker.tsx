@@ -176,7 +176,6 @@ export function WellnessTracker() {
             >
               {todayEntry ? 'Update Today\'s Entry' : 'Save Today\'s Entry'}
             </button>
-            )}
           </div>
 
           {/* Stress Level */}
