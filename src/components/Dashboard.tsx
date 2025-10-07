@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, CheckSquare, Brain, BarChart3, Users, Timer, BookOpen, Settings } from 'lucide-react';
+import { Calendar, CheckSquare, Flame, BarChart3, Users, Timer, BookOpen, Settings } from 'lucide-react';
 import { authService } from '../lib/auth';
 import { databaseService } from '../lib/database';
 
@@ -119,7 +119,7 @@ export function Dashboard() {
               <p className="text-sm font-medium text-gray-600">Wellness Streak</p>
               <p className="text-2xl font-bold text-green-600">{stats.wellnessStreak} days</p>
             </div>
-            <Brain className="h-8 w-8 text-green-500" />
+            <Flame className="h-8 w-8 text-green-500" />
           </div>
         </div>
       </div>

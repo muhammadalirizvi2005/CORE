@@ -1,56 +1,7 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, User, Lock } from 'lucide-react';
+import { Eye, EyeOff, User, Lock, Brain } from 'lucide-react';
 import { authService } from '../lib/auth';
 import type { User as UserType } from '../lib/supabase';
-
-// Custom Brain Logo Component
-const BrainLogo = ({ className }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-    {/* Brain outline with rounded lobes */}
-    <path
-      d="M20 35C20 25 28 15 40 15C45 15 50 17 53 20C56 17 61 15 66 15C78 15 86 25 86 35C86 40 84 45 81 48C84 52 86 57 86 63C86 73 78 83 66 83C61 83 56 81 53 78C50 81 45 83 40 83C28 83 20 73 20 63C20 57 22 52 25 48C22 45 20 40 20 35Z"
-      fill="#10B981"
-      stroke="#0D9488"
-      strokeWidth="2"
-    />
-    
-    {/* Inner brain pattern - left hemisphere */}
-    <path
-      d="M25 35C25 30 30 25 37 25C42 25 47 28 47 35C47 42 42 47 37 47C30 47 25 42 25 35Z"
-      fill="white"
-      opacity="0.9"
-    />
-    
-    {/* Inner brain pattern - right hemisphere */}
-    <path
-      d="M59 35C59 30 64 25 71 25C76 25 81 28 81 35C81 42 76 47 71 47C64 47 59 42 59 35Z"
-      fill="white"
-      opacity="0.9"
-    />
-    
-    {/* Lower brain sections */}
-    <path
-      d="M25 63C25 58 30 53 37 53C42 53 47 56 47 63C47 70 42 75 37 75C30 75 25 70 25 63Z"
-      fill="white"
-      opacity="0.9"
-    />
-    
-    <path
-      d="M59 63C59 58 64 53 71 53C76 53 81 56 81 63C81 70 76 75 71 75C64 75 59 70 59 63Z"
-      fill="white"
-      opacity="0.9"
-    />
-    
-    {/* Central connecting line */}
-    <line x1="50" y1="20" x2="50" y2="80" stroke="#0D9488" strokeWidth="2" opacity="0.6"/>
-    
-    {/* Small detail dots */}
-    <circle cx="37" cy="35" r="2" fill="#10B981"/>
-    <circle cx="71" cy="35" r="2" fill="#10B981"/>
-    <circle cx="37" cy="63" r="2" fill="#10B981"/>
-    <circle cx="71" cy="63" r="2" fill="#10B981"/>
-  </svg>
-);
 
 interface LoginFormProps {
   onLogin: (user: UserType) => void;
@@ -158,7 +109,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
         {/* Logo and Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <BrainLogo className="h-10 w-10 text-green-500" />
+            <Brain className="h-10 w-10 text-green-500" />
             <span className="text-2xl font-bold text-gray-900">CORE</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
