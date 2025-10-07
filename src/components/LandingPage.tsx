@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Heart, BarChart3, Users, Zap } from 'lucide-react';
+import { Calendar, Heart, BarChart3, Users, Zap, BookOpen } from 'lucide-react';
 
 // Custom Brain Logo Component
 const BrainLogo = ({ className }: { className?: string }) => (
