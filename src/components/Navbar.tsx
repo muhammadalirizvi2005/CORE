@@ -4,24 +4,50 @@ import type { ViewType } from '../App';
 
 // Custom Brain Logo Component
 const BrainLogo = ({ className }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    {/* Brain outline with rounded lobes */}
     <path
-      d="M12 2C8.5 2 6 4.5 6 8c0 1.5.5 3 1.5 4C6.5 13 6 14.5 6 16c0 3.5 2.5 6 6 6s6-2.5 6-6c0-1.5-.5-3-1.5-4C17.5 11 18 9.5 18 8c0-3.5-2.5-6-6-6z"
-      fill="currentColor"
-      opacity="0.8"
+      d="M20 35C20 25 28 15 40 15C45 15 50 17 53 20C56 17 61 15 66 15C78 15 86 25 86 35C86 40 84 45 81 48C84 52 86 57 86 63C86 73 78 83 66 83C61 83 56 81 53 78C50 81 45 83 40 83C28 83 20 73 20 63C20 57 22 52 25 48C22 45 20 40 20 35Z"
+      fill="#10B981"
+      stroke="#0D9488"
+      strokeWidth="2"
     />
+    
+    {/* Inner brain pattern - left hemisphere */}
     <path
-      d="M9 8c0-1.5 1.5-3 3-3s3 1.5 3 3-1.5 3-3 3-3-1.5-3-3z"
+      d="M25 35C25 30 30 25 37 25C42 25 47 28 47 35C47 42 42 47 37 47C30 47 25 42 25 35Z"
       fill="white"
+      opacity="0.9"
     />
+    
+    {/* Inner brain pattern - right hemisphere */}
     <path
-      d="M9 16c0-1.5 1.5-3 3-3s3 1.5 3 3-1.5 3-3 3-3-1.5-3-3z"
+      d="M59 35C59 30 64 25 71 25C76 25 81 28 81 35C81 42 76 47 71 47C64 47 59 42 59 35Z"
       fill="white"
+      opacity="0.9"
     />
-    <circle cx="10.5" cy="8" r="0.5" fill="currentColor" />
-    <circle cx="13.5" cy="8" r="0.5" fill="currentColor" />
-    <circle cx="10.5" cy="16" r="0.5" fill="currentColor" />
-    <circle cx="13.5" cy="16" r="0.5" fill="currentColor" />
+    
+    {/* Lower brain sections */}
+    <path
+      d="M25 63C25 58 30 53 37 53C42 53 47 56 47 63C47 70 42 75 37 75C30 75 25 70 25 63Z"
+      fill="white"
+      opacity="0.9"
+    />
+    
+    <path
+      d="M59 63C59 58 64 53 71 53C76 53 81 56 81 63C81 70 76 75 71 75C64 75 59 70 59 63Z"
+      fill="white"
+      opacity="0.9"
+    />
+    
+    {/* Central connecting line */}
+    <line x1="50" y1="20" x2="50" y2="80" stroke="#0D9488" strokeWidth="2" opacity="0.6"/>
+    
+    {/* Small detail dots */}
+    <circle cx="37" cy="35" r="2" fill="#10B981"/>
+    <circle cx="71" cy="35" r="2" fill="#10B981"/>
+    <circle cx="37" cy="63" r="2" fill="#10B981"/>
+    <circle cx="71" cy="63" r="2" fill="#10B981"/>
   </svg>
 );
 
