@@ -1,5 +1,28 @@
 import React from 'react';
-import { BookOpen, Calendar, Heart, BarChart3, Users, Zap } from 'lucide-react';
+import { Calendar, Heart, BarChart3, Users, Zap } from 'lucide-react';
+
+// Custom Brain Logo Component
+const BrainLogo = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path
+      d="M12 2C8.5 2 6 4.5 6 8c0 1.5.5 3 1.5 4C6.5 13 6 14.5 6 16c0 3.5 2.5 6 6 6s6-2.5 6-6c0-1.5-.5-3-1.5-4C17.5 11 18 9.5 18 8c0-3.5-2.5-6-6-6z"
+      fill="currentColor"
+      opacity="0.8"
+    />
+    <path
+      d="M9 8c0-1.5 1.5-3 3-3s3 1.5 3 3-1.5 3-3 3-3-1.5-3-3z"
+      fill="white"
+    />
+    <path
+      d="M9 16c0-1.5 1.5-3 3-3s3 1.5 3 3-1.5 3-3 3-3-1.5-3-3z"
+      fill="white"
+    />
+    <circle cx="10.5" cy="8" r="0.5" fill="currentColor" />
+    <circle cx="13.5" cy="8" r="0.5" fill="currentColor" />
+    <circle cx="10.5" cy="16" r="0.5" fill="currentColor" />
+    <circle cx="13.5" cy="16" r="0.5" fill="currentColor" />
+  </svg>
+);
 
 interface LandingPageProps {
   onGetStarted: () => void;
