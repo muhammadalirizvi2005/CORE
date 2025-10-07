@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, CheckSquare, Flame, BarChart3, Users, Timer, BookOpen, Settings } from 'lucide-react';
+import { Calendar, CheckSquare, Flame, BarChart3, Users, Timer, BookOpen, Settings, Brain } from 'lucide-react';
 import { authService } from '../lib/auth';
 import { databaseService } from '../lib/database';
 
