@@ -110,7 +110,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center space-x-2 mb-4">
             <Brain className="h-10 w-10 text-green-500" />
-            <span className="text-2xl font-bold text-gray-900">CORE</span>
+            <span className="text-2xl font-bold text-blue-600">CORE</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
             {isLogin ? 'Welcome Back!' : 'Join StudyHub'}

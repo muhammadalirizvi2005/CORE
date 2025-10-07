@@ -13,7 +13,10 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-              <span className="text-blue-600">CORE</span>
+              <div className="flex items-center justify-center space-x-3 mb-4">
+                <Brain className="h-12 w-12 md:h-16 md:w-16 text-green-500" />
+                <span className="text-blue-600">CORE</span>
+              </div>
               <br />
               Your College Life, Organized
             </h1>

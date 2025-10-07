@@ -27,7 +27,7 @@ export function Navbar({ currentView, onViewChange, currentUser, onLogout }: Nav
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-2">
             <Brain className="h-8 w-8 text-green-500" />
-            <span className="text-xl font-bold text-gray-900">CORE</span>
+            <span className="text-xl font-bold text-blue-600">CORE</span>
           </div>
 
           {/* Desktop Navigation */}
