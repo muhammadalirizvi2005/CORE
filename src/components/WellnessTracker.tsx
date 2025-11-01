@@ -1,10 +1,79 @@
 import React, { useState } from 'react';
+import { useEffect } from 'react';
 import { Heart, Brain, Coffee, Moon, Activity, TrendingUp } from 'lucide-react';
+import { databaseService, type WellnessEntry } from '../lib/database';
+import { authService } from '../lib/auth';
 
 export function WellnessTracker() {
   const [selectedMood, setSelectedMood] = useState<string>('');
   const [stressLevel, setStressLevel] = useState<number>(3);
+  const [notes, setNotes] = useState<string>('');
+  const [todayEntry, setTodayEntry] = useState<WellnessEntry | null>(null);
+  const [recentEntries, setRecentEntries] = useState<WellnessEntry[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    loadWellnessData();
+  }, []);
+
+  const loadWellnessData = async () => {
+    try {
+      const user = authService.getCurrentUser();
+      if (user) {
+        const [todayData, recentData] = await Promise.all([
+          databaseService.getTodayWellnessEntry(user.id),
+          databaseService.getWellnessEntries(user.id, 7)
+        ]);
+        
+        setTodayEntry(todayData);
+        setRecentEntries(recentData);
+        
+        if (todayData) {
+          setSelectedMood(todayData.mood);
+          setStressLevel(todayData.stress_level);
+          setNotes(todayData.notes);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading wellness data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveWellnessEntry = async () => {
+    if (!selectedMood) return;
+    
+    try {
+      const user = authService.getCurrentUser();
+      if (!user) return;
+
+      const entryData = {
+        mood: selectedMood as WellnessEntry['mood'],
+        stress_level: stressLevel,
+        notes: notes,
+        entry_date: new Date().toISOString().split('T')[0]
+      };
+
+      const newEntry = await databaseService.createWellnessEntry(user.id, entryData);
+      setTodayEntry(newEntry);
+      setRecentEntries(prev => [newEntry, ...prev.slice(0, 6)]);
+    } catch (error) {
+      console.error('Error saving wellness entry:', error);
+    }
+  };
+
+  const calculateAverages = () => {
+    if (recentEntries.length === 0) return { avgMood: 0, avgStress: 0 };
+    
+    const moodValues = { great: 5, good: 4, okay: 3, stressed: 2, overwhelmed: 1 };
+    const avgMood = recentEntries.reduce((sum, entry) => sum + moodValues[entry.mood], 0) / recentEntries.length;
+    const avgStress = recentEntries.reduce((sum, entry) => sum + entry.stress_level, 0) / recentEntries.length;
+    
+    return { avgMood, avgStress };
+  };
+
+  const { avgMood, avgStress } = calculateAverages();
   const moodOptions = [
     { emoji: '😊', label: 'Great', value: 'great' },
     { emoji: '🙂', label: 'Good', value: 'good' },
@@ -78,7 +147,7 @@ export function WellnessTracker() {
             </div>
 
             {selectedMood && (
-              <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="bg-blue-50 p-4 rounded-lg mb-4">
                 <p className="text-sm text-blue-800">
                   {selectedMood === 'great' && "Awesome! Keep up the positive energy!"}
                   {selectedMood === 'good' && "Great to hear! You're doing well."}
@@ -88,6 +157,25 @@ export function WellnessTracker() {
                 </p>
               </div>
             )}
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Notes (optional)</label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                rows={3}
+                placeholder="How are you feeling today? Any thoughts to share?"
+              />
+            </div>
+            
+            <button
+              onClick={saveWellnessEntry}
+              disabled={!selectedMood}
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {todayEntry ? 'Update Today\'s Entry' : 'Save Today\'s Entry'}
+            </button>
           </div>
 
           {/* Stress Level */}
@@ -137,21 +225,21 @@ export function WellnessTracker() {
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="text-center p-4 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">7.2</div>
+                <div className="text-2xl font-bold text-green-600">{avgMood.toFixed(1)}</div>
                 <div className="text-sm text-gray-600">Avg Mood Score</div>
-                <div className="text-xs text-green-600 mt-1">↗ +0.5 from last week</div>
+                <div className="text-xs text-green-600 mt-1">Last 7 days</div>
               </div>
               
               <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">4.1</div>
+                <div className="text-2xl font-bold text-blue-600">{avgStress.toFixed(1)}</div>
                 <div className="text-sm text-gray-600">Avg Stress Level</div>
-                <div className="text-xs text-red-600 mt-1">↗ +0.3 from last week</div>
+                <div className="text-xs text-blue-600 mt-1">Last 7 days</div>
               </div>
               
               <div className="text-center p-4 bg-purple-50 rounded-lg">
-                <div className="text-2xl font-bold text-purple-600">6</div>
+                <div className="text-2xl font-bold text-purple-600">{recentEntries.length}</div>
                 <div className="text-sm text-gray-600">Check-ins This Week</div>
-                <div className="text-xs text-purple-600 mt-1">Great consistency!</div>
+                <div className="text-xs text-purple-600 mt-1">{recentEntries.length >= 5 ? 'Great consistency!' : 'Keep it up!'}</div>
               </div>
             </div>
           </div>

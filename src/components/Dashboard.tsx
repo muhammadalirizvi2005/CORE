@@ -1,408 +1,187 @@
-import React, { useState } from 'react';
-import { Calendar, Clock, AlertTriangle, Plus, BookOpen, Briefcase, Users, Coffee, Image, X } from 'lucide-react';
-
-interface Task {
-  id: string;
-  title: string;
-  category: 'class' | 'work' | 'extracurricular' | 'personal';
-  priority: 'high' | 'medium' | 'low';
-  dueDate: Date;
-  completed: boolean;
-}
+import React, { useState, useEffect } from 'react';
+import { Calendar, CheckSquare, Flame, BarChart3, Users, Timer, BookOpen, Settings, Brain } from 'lucide-react';
+import { authService } from '../lib/auth';
+import { databaseService } from '../lib/database';
 
 export function Dashboard() {
-  const [viewMode, setViewMode] = useState<'today' | 'week'>('today');
-  const [showWallpaperModal, setShowWallpaperModal] = useState(false);
-  const [selectedWallpaper, setSelectedWallpaper] = useState('default');
+  const [user, setUser] = useState(authService.getCurrentUser());
+  const [stats, setStats] = useState({
+    totalTasks: 0,
+    completedTasks: 0,
+    upcomingDeadlines: 0,
+    currentGPA: 0,
+    wellnessStreak: 0
+  });
 
-  const wallpapers = [
-    { id: 'default', name: 'Default', preview: 'bg-gray-50' },
-    { id: 'gradient-blue', name: 'Ocean Breeze', preview: 'bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-100' },
-    { id: 'gradient-purple', name: 'Purple Dreams', preview: 'bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-100' },
-    { id: 'gradient-green', name: 'Forest Fresh', preview: 'bg-gradient-to-br from-green-50 via-emerald-50 to-teal-100' },
-    { id: 'gradient-warm', name: 'Sunset Glow', preview: 'bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-100' },
-    { id: 'gradient-cool', name: 'Arctic Mist', preview: 'bg-gradient-to-br from-slate-50 via-gray-50 to-blue-50' },
-    { id: 'minimal-dark', name: 'Minimal Dark', preview: 'bg-gradient-to-br from-gray-900 via-gray-800 to-slate-900' },
-    { id: 'study-vibes', name: 'Study Vibes', preview: 'bg-gradient-to-br from-indigo-50 via-blue-50 to-cyan-50' },
-  ];
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
 
-  const getWallpaperClass = (wallpaperId: string) => {
-    const wallpaper = wallpapers.find(w => w.id === wallpaperId);
-    return wallpaper ? wallpaper.preview : 'bg-gray-50';
-  };
-
-  const mockTasks: Task[] = [
-    {
-      id: '1',
-      title: 'Computer Science Assignment 3',
-      category: 'class',
-      priority: 'high',
-      dueDate: new Date(2024, 0, 15),
-      completed: false,
-    },
-    {
-      id: '2',
-      title: 'Study for Biology Midterm',
-      category: 'class',
-      priority: 'high',
-      dueDate: new Date(2024, 0, 16),
-      completed: false,
-    },
-    {
-      id: '3',
-      title: 'Complete internship application',
-      category: 'work',
-      priority: 'medium',
-      dueDate: new Date(2024, 0, 18),
-      completed: false,
-    },
-    {
-      id: '4',
-      title: 'Club meeting preparation',
-      category: 'extracurricular',
-      priority: 'low',
-      dueDate: new Date(2024, 0, 17),
-      completed: false,
-    },
-  ];
-
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'class': return <BookOpen className="h-4 w-4" />;
-      case 'work': return <Briefcase className="h-4 w-4" />;
-      case 'extracurricular': return <Users className="h-4 w-4" />;
-      default: return <Coffee className="h-4 w-4" />;
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'text-red-600 bg-red-50';
-      case 'medium': return 'text-yellow-600 bg-yellow-50';
-      case 'low': return 'text-green-600 bg-green-50';
-      default: return 'text-gray-600 bg-gray-50';
-    }
-  };
-
-  const isDarkWallpaper = selectedWallpaper === 'minimal-dark';
-
-  const openExternal = (url: string) => {
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  const getCanvasBaseUrl = (): string | null => {
-    const saved = localStorage.getItem('canvasBaseUrl');
-    return saved && saved.startsWith('https://') ? saved : null;
-  };
-
-  const promptForCanvasUrl = (): string | null => {
-    const input = window.prompt('Enter your Canvas URL (e.g., https://your-school.instructure.com):');
-    if (!input) return null;
-    const url = input.startsWith('http') ? input : `https://${input}`;
+  const loadDashboardData = async () => {
+    if (!user) return;
+    
     try {
-      const u = new URL(url);
-      if (!u.hostname.includes('instructure.com') && !u.hostname.includes('canvas.')) {
-        alert('That does not look like a valid Canvas domain.');
-        return null;
-      }
-      localStorage.setItem('canvasBaseUrl', `https://${u.hostname}`);
-      return `https://${u.hostname}`;
-    } catch {
-      alert('Please enter a valid URL.');
-      return null;
+      // Load user statistics
+      const [tasks, courses, wellnessEntries] = await Promise.all([
+        databaseService.getTasks(user.id),
+        databaseService.getCourses(user.id),
+        databaseService.getWellnessEntries(user.id, 7)
+      ]);
+
+      const completedTasks = tasks.filter(task => task.completed).length;
+      const upcomingDeadlines = tasks.filter(task => 
+        task.due_date && new Date(task.due_date) > new Date() && 
+        new Date(task.due_date) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      ).length;
+
+      const avgGPA = courses.length > 0 
+        ? courses.reduce((sum, course) => sum + (course.current_grade || 0), 0) / courses.length 
+        : 0;
+
+      setStats({
+        totalTasks: tasks.length,
+        completedTasks,
+        upcomingDeadlines,
+        currentGPA: avgGPA,
+        wellnessStreak: wellnessEntries.length
+      });
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
     }
   };
 
-  const openCanvas = () => {
-    const base = getCanvasBaseUrl() || promptForCanvasUrl();
-    if (base) openExternal(`${base}/login`);
-  };
-
-  const getEmailWebUrl = (): string | null => {
-    const saved = localStorage.getItem('emailWebUrl');
-    return saved && saved.startsWith('https://') ? saved : null;
-  };
-
-  const promptForEmailWebUrl = (): string | null => {
-    const input = window.prompt('Enter your email web URL (e.g., https://mail.google.com or https://outlook.office.com):');
-    if (!input) return null;
-    const url = input.startsWith('http') ? input : `https://${input}`;
-    try {
-      const u = new URL(url);
-      localStorage.setItem('emailWebUrl', `${u.protocol}//${u.hostname}`);
-      return `${u.protocol}//${u.hostname}`;
-    } catch {
-      alert('Please enter a valid URL.');
-      return null;
-    }
-  };
-
-  const openEmail = () => {
-    const base = getEmailWebUrl() || promptForEmailWebUrl();
-    if (base) openExternal(base);
-  };
+  const quickActions = [
+    { icon: CheckSquare, label: 'Add Task', color: 'bg-blue-500', href: '/tasks' },
+    { icon: Timer, label: 'Start Pomodoro', color: 'bg-red-500', href: '/pomodoro' },
+    { icon: Brain, label: 'Wellness Check', color: 'bg-green-500', href: '/wellness' },
+    { icon: BookOpen, label: 'Add Grade', color: 'bg-purple-500', href: '/grades' },
+    { icon: Users, label: 'Study Groups', color: 'bg-orange-500', href: '/groups' },
+    { icon: BarChart3, label: 'View Analytics', color: 'bg-indigo-500', href: '/analytics' }
+  ];
 
   return (
-    <div className={`min-h-screen transition-all duration-500 ${getWallpaperClass(selectedWallpaper)}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
-        <div>
-          <h1 className={`text-3xl font-bold ${isDarkWallpaper ? 'text-white' : 'text-gray-900'}`}>Dashboard</h1>
-          <p className={`mt-1 ${isDarkWallpaper ? 'text-gray-300' : 'text-gray-600'}`}>Welcome back, Jane! You have 4 tasks due this week.</p>
-        </div>
-        
-        <div className="flex items-center space-x-4 mt-4 sm:mt-0">
-          <button
-            onClick={() => setShowWallpaperModal(true)}
-            className={`p-2 rounded-lg transition-colors ${
-              isDarkWallpaper 
-                ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' 
-                : 'bg-white text-gray-600 hover:bg-gray-100'
-            } shadow-sm`}
-            title="Change wallpaper"
-          >
-            <Image className="h-5 w-5" />
-          </button>
-          
-          <div className="flex bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => setViewMode('today')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'today' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600'
-              }`}
-            >
-              Today
-            </button>
-            <button
-              onClick={() => setViewMode('week')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'week' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600'
-              }`}
-            >
-              This Week
-            </button>
-          </div>
-          
-          <button className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center space-x-2">
-            <Plus className="h-4 w-4" />
-            <span>Add Task</span>
-          </button>
-        </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Welcome Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">
+          Welcome back, {user?.full_name || 'Student'}! 👋
+        </h1>
+        <p className="text-gray-600 mt-1">Here's your productivity overview for today</p>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        {[
-          { label: 'Tasks Due Today', value: '3', icon: Clock, color: 'text-blue-600 bg-blue-50' },
-          { label: 'This Week', value: '8', icon: Calendar, color: 'text-green-600 bg-green-50' },
-          { label: 'High Priority', value: '2', icon: AlertTriangle, color: 'text-red-600 bg-red-50' },
-          { label: 'Completed Today', value: '5', icon: BookOpen, color: 'text-purple-600 bg-purple-50' },
-        ].map((stat, index) => (
-          <div key={index} className={`p-6 rounded-xl shadow-sm backdrop-blur-sm ${
-            isDarkWallpaper ? 'bg-gray-800/80 border border-gray-700' : 'bg-white/80'
-          }`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className={`text-sm ${isDarkWallpaper ? 'text-gray-400' : 'text-gray-600'}`}>{stat.label}</p>
-                <p className={`text-2xl font-bold mt-1 ${isDarkWallpaper ? 'text-white' : 'text-gray-900'}`}>{stat.value}</p>
-              </div>
-              <div className={`p-3 rounded-lg ${stat.color}`}>
-                <stat.icon className="h-6 w-6" />
-              </div>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        <div className="bg-white p-6 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Tasks</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.totalTasks}</p>
+            </div>
+            <CheckSquare className="h-8 w-8 text-blue-500" />
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Completed</p>
+              <p className="text-2xl font-bold text-green-600">{stats.completedTasks}</p>
+            </div>
+            <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
+              <span className="text-green-600 font-bold">✓</span>
             </div>
           </div>
-        ))}
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Due This Week</p>
+              <p className="text-2xl font-bold text-orange-600">{stats.upcomingDeadlines}</p>
+            </div>
+            <Calendar className="h-8 w-8 text-orange-500" />
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Current GPA</p>
+              <p className="text-2xl font-bold text-purple-600">{stats.currentGPA.toFixed(1)}</p>
+            </div>
+            <BarChart3 className="h-8 w-8 text-purple-500" />
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Wellness Streak</p>
+              <p className="text-2xl font-bold text-green-600">{stats.wellnessStreak} days</p>
+            </div>
+            <Flame className="h-8 w-8 text-green-500" />
+          </div>
+        </div>
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Upcoming Tasks */}
-        <div className={`lg:col-span-2 rounded-xl shadow-sm p-6 backdrop-blur-sm ${
-          isDarkWallpaper ? 'bg-gray-800/80 border border-gray-700' : 'bg-white/80'
-        }`}>
-          <h2 className={`text-xl font-bold mb-4 ${isDarkWallpaper ? 'text-white' : 'text-gray-900'}`}>
-            {viewMode === 'today' ? "Today's Tasks" : "This Week's Tasks"}
-          </h2>
-          
+      {/* Quick Actions */}
+      <div className="mb-8">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {quickActions.map((action, index) => (
+            <button
+              key={index}
+              className="bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow group"
+            >
+              <div className={`${action.color} p-3 rounded-lg mb-3 group-hover:scale-110 transition-transform`}>
+                <action.icon className="h-6 w-6 text-white" />
+              </div>
+              <p className="text-sm font-medium text-gray-900">{action.label}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="bg-white p-6 rounded-xl shadow-sm">
+          <h3 className="text-lg font-bold text-gray-900 mb-4">Recent Tasks</h3>
+          <div className="space-y-3">
+            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <span className="text-sm text-gray-700">Complete math homework</span>
+              <span className="text-xs text-gray-500 ml-auto">Due tomorrow</span>
+            </div>
+            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span className="text-sm text-gray-700">Study for chemistry exam</span>
+              <span className="text-xs text-gray-500 ml-auto">Due Friday</span>
+            </div>
+            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+              <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+              <span className="text-sm text-gray-700">Submit project proposal</span>
+              <span className="text-xs text-gray-500 ml-auto">Due next week</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm">
+          <h3 className="text-lg font-bold text-gray-900 mb-4">Wellness Insights</h3>
           <div className="space-y-4">
-            {mockTasks.map((task) => (
-              <div key={task.id} className={`flex items-center space-x-4 p-4 border rounded-lg hover:shadow-sm transition-all ${
-                isDarkWallpaper 
-                  ? 'border-gray-600 hover:bg-gray-700/50' 
-                  : 'border-gray-200 hover:bg-gray-50/50'
-              }`}>
-                <input
-                  type="checkbox"
-                  checked={task.completed}
-                  onChange={() => {}}
-                  className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
-                />
-                
-                <div className={`p-2 rounded-lg ${getPriorityColor(task.category)}`}>
-                  {getCategoryIcon(task.category)}
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <h3 className={`text-sm font-medium truncate ${isDarkWallpaper ? 'text-white' : 'text-gray-900'}`}>{task.title}</h3>
-                  <p className={`text-xs mt-1 ${isDarkWallpaper ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Due {task.dueDate.toLocaleDateString()}
-                  </p>
-                </div>
-                
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
-                  {task.priority}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Wellness & Quick Actions */}
-        <div className="space-y-6">
-          {/* Wellness Check */}
-          <div className={`p-6 rounded-xl backdrop-blur-sm ${
-            isDarkWallpaper 
-              ? 'bg-gray-800/80 border border-gray-700' 
-              : 'bg-gradient-to-br from-green-50 to-blue-50'
-          }`}>
-            <h3 className={`text-lg font-semibold mb-3 ${isDarkWallpaper ? 'text-white' : 'text-gray-900'}`}>Wellness Check</h3>
-            <p className={`text-sm mb-4 ${isDarkWallpaper ? 'text-gray-400' : 'text-gray-600'}`}>How are you feeling today?</p>
-            
-            <div className="flex space-x-2 mb-4">
-              {['😊', '😐', '😔', '😴', '🤯'].map((emoji, index) => (
-                <button
-                  key={index}
-                  className={`p-3 rounded-lg transition-colors shadow-sm ${
-                    isDarkWallpaper 
-                      ? 'bg-gray-700 hover:bg-gray-600' 
-                      : 'bg-white hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="text-xl">{emoji}</span>
-                </button>
-              ))}
+            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+              <span className="text-sm text-green-800">Average mood this week</span>
+              <span className="text-sm font-bold text-green-600">Good 😊</span>
             </div>
-            
-            <div className={`p-4 rounded-lg ${
-              isDarkWallpaper ? 'bg-gray-700' : 'bg-white'
-            }`}>
-              <p className={`text-sm font-medium mb-2 ${isDarkWallpaper ? 'text-gray-300' : 'text-gray-700'}`}>💡 Daily Tip</p>
-              <p className={`text-xs ${isDarkWallpaper ? 'text-gray-400' : 'text-gray-600'}`}>
-                Remember to take a 10-minute break every hour. Your brain will thank you!
-              </p>
+            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+              <span className="text-sm text-blue-800">Stress level trend</span>
+              <span className="text-sm font-bold text-blue-600">Decreasing 📉</span>
             </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className={`p-6 rounded-xl shadow-sm backdrop-blur-sm ${
-            isDarkWallpaper ? 'bg-gray-800/80 border border-gray-700' : 'bg-white/80'
-          }`}>
-            <h3 className={`text-lg font-semibold mb-4 ${isDarkWallpaper ? 'text-white' : 'text-gray-900'}`}>Quick Actions</h3>
-            
-            <div className="space-y-3">
-              <button onClick={openCanvas} className={`w-full text-left p-3 rounded-lg transition-colors border ${
-                isDarkWallpaper 
-                  ? 'border-gray-600 hover:bg-gray-700' 
-                  : 'border-gray-200 hover:bg-gray-50'
-              }`}>
-                <p className={`font-medium ${isDarkWallpaper ? 'text-white' : 'text-gray-900'}`}>🔗 Sync with Canvas</p>
-                <p className={`text-xs ${isDarkWallpaper ? 'text-gray-400' : 'text-gray-500'}`}>Import assignments automatically</p>
-              </button>
-              
-              <button onClick={() => openExternal('https://calendar.google.com')} className={`w-full text-left p-3 rounded-lg transition-colors border ${
-                isDarkWallpaper 
-                  ? 'border-gray-600 hover:bg-gray-700' 
-                  : 'border-gray-200 hover:bg-gray-50'
-              }`}>
-                <p className={`font-medium ${isDarkWallpaper ? 'text-white' : 'text-gray-900'}`}>📅 Connect Google Calendar</p>
-                <p className={`text-xs ${isDarkWallpaper ? 'text-gray-400' : 'text-gray-500'}`}>Keep everything in sync</p>
-              </button>
-              
-              <button onClick={openEmail} className={`w-full text-left p-3 rounded-lg transition-colors border ${
-                isDarkWallpaper 
-                  ? 'border-gray-600 hover:bg-gray-700' 
-                  : 'border-gray-200 hover:bg-gray-50'
-              }`}>
-                <p className={`font-medium ${isDarkWallpaper ? 'text-white' : 'text-gray-900'}`}>✉️ Open Email</p>
-                <p className={`text-xs ${isDarkWallpaper ? 'text-gray-400' : 'text-gray-500'}`}>Gmail, Outlook, or your provider</p>
-              </button>
-
-              <button onClick={() => openExternal('https://app.joinhandshake.com')} className={`w-full text-left p-3 rounded-lg transition-colors border ${
-                isDarkWallpaper 
-                  ? 'border-gray-600 hover:bg-gray-700' 
-                  : 'border-gray-200 hover:bg-gray-50'
-              }`}>
-                <p className={`font-medium ${isDarkWallpaper ? 'text-white' : 'text-gray-900'}`}>💼 Find jobs on Handshake</p>
-                <p className={`text-xs ${isDarkWallpaper ? 'text-gray-400' : 'text-gray-500'}`}>Apply for jobs and internships</p>
-              </button>
-
-              <button className={`w-full text-left p-3 rounded-lg transition-colors border ${
-                isDarkWallpaper 
-                  ? 'border-gray-600 hover:bg-gray-700' 
-                  : 'border-gray-200 hover:bg-gray-50'
-              }`}>
-                <p className={`font-medium ${isDarkWallpaper ? 'text-white' : 'text-gray-900'}`}>🤖 AI Study Planner</p>
-                <p className={`text-xs ${isDarkWallpaper ? 'text-gray-400' : 'text-gray-500'}`}>Get personalized recommendations</p>
-              </button>
+            <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+              <span className="text-sm text-purple-800">Focus sessions completed</span>
+              <span className="text-sm font-bold text-purple-600">12 this week</span>
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Wallpaper Selection Modal */}
-      {showWallpaperModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Choose Your Wallpaper</h2>
-              <button
-                onClick={() => setShowWallpaperModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="h-5 w-5 text-gray-500" />
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {wallpapers.map((wallpaper) => (
-                <button
-                  key={wallpaper.id}
-                  onClick={() => {
-                    setSelectedWallpaper(wallpaper.id);
-                    setShowWallpaperModal(false);
-                  }}
-                  className={`relative p-4 rounded-xl border-2 transition-all hover:scale-105 ${
-                    selectedWallpaper === wallpaper.id
-                      ? 'border-blue-500 ring-2 ring-blue-200'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className={`w-full h-24 rounded-lg mb-3 ${wallpaper.preview}`} />
-                  <p className={`text-sm font-medium ${
-                    wallpaper.id === 'minimal-dark' ? 'text-white' : 'text-gray-900'
-                  }`}>
-                    {wallpaper.name}
-                  </p>
-                  {selectedWallpaper === wallpaper.id && (
-                    <div className="absolute top-2 right-2 bg-blue-500 text-white rounded-full p-1">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-            
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-800">
-                💡 <strong>Tip:</strong> Choose a wallpaper that helps you stay focused and motivated during your study sessions!
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
       </div>
     </div>
   );
