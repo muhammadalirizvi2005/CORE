@@ -86,6 +86,62 @@ export function Dashboard() {
 
   const isDarkWallpaper = selectedWallpaper === 'minimal-dark';
 
+  const openExternal = (url: string) => {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const getCanvasBaseUrl = (): string | null => {
+    const saved = localStorage.getItem('canvasBaseUrl');
+    return saved && saved.startsWith('https://') ? saved : null;
+  };
+
+  const promptForCanvasUrl = (): string | null => {
+    const input = window.prompt('Enter your Canvas URL (e.g., https://your-school.instructure.com):');
+    if (!input) return null;
+    const url = input.startsWith('http') ? input : `https://${input}`;
+    try {
+      const u = new URL(url);
+      if (!u.hostname.includes('instructure.com') && !u.hostname.includes('canvas.')) {
+        alert('That does not look like a valid Canvas domain.');
+        return null;
+      }
+      localStorage.setItem('canvasBaseUrl', `https://${u.hostname}`);
+      return `https://${u.hostname}`;
+    } catch {
+      alert('Please enter a valid URL.');
+      return null;
+    }
+  };
+
+  const openCanvas = () => {
+    const base = getCanvasBaseUrl() || promptForCanvasUrl();
+    if (base) openExternal(`${base}/login`);
+  };
+
+  const getEmailWebUrl = (): string | null => {
+    const saved = localStorage.getItem('emailWebUrl');
+    return saved && saved.startsWith('https://') ? saved : null;
+  };
+
+  const promptForEmailWebUrl = (): string | null => {
+    const input = window.prompt('Enter your email web URL (e.g., https://mail.google.com or https://outlook.office.com):');
+    if (!input) return null;
+    const url = input.startsWith('http') ? input : `https://${input}`;
+    try {
+      const u = new URL(url);
+      localStorage.setItem('emailWebUrl', `${u.protocol}//${u.hostname}`);
+      return `${u.protocol}//${u.hostname}`;
+    } catch {
+      alert('Please enter a valid URL.');
+      return null;
+    }
+  };
+
+  const openEmail = () => {
+    const base = getEmailWebUrl() || promptForEmailWebUrl();
+    if (base) openExternal(base);
+  };
+
   return (
     <div className={`min-h-screen transition-all duration-500 ${getWallpaperClass(selectedWallpaper)}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -245,7 +301,7 @@ export function Dashboard() {
             <h3 className={`text-lg font-semibold mb-4 ${isDarkWallpaper ? 'text-white' : 'text-gray-900'}`}>Quick Actions</h3>
             
             <div className="space-y-3">
-              <button className={`w-full text-left p-3 rounded-lg transition-colors border ${
+              <button onClick={openCanvas} className={`w-full text-left p-3 rounded-lg transition-colors border ${
                 isDarkWallpaper 
                   ? 'border-gray-600 hover:bg-gray-700' 
                   : 'border-gray-200 hover:bg-gray-50'
@@ -254,7 +310,7 @@ export function Dashboard() {
                 <p className={`text-xs ${isDarkWallpaper ? 'text-gray-400' : 'text-gray-500'}`}>Import assignments automatically</p>
               </button>
               
-              <button className={`w-full text-left p-3 rounded-lg transition-colors border ${
+              <button onClick={() => openExternal('https://calendar.google.com')} className={`w-full text-left p-3 rounded-lg transition-colors border ${
                 isDarkWallpaper 
                   ? 'border-gray-600 hover:bg-gray-700' 
                   : 'border-gray-200 hover:bg-gray-50'
@@ -263,6 +319,24 @@ export function Dashboard() {
                 <p className={`text-xs ${isDarkWallpaper ? 'text-gray-400' : 'text-gray-500'}`}>Keep everything in sync</p>
               </button>
               
+              <button onClick={openEmail} className={`w-full text-left p-3 rounded-lg transition-colors border ${
+                isDarkWallpaper 
+                  ? 'border-gray-600 hover:bg-gray-700' 
+                  : 'border-gray-200 hover:bg-gray-50'
+              }`}>
+                <p className={`font-medium ${isDarkWallpaper ? 'text-white' : 'text-gray-900'}`}>✉️ Open Email</p>
+                <p className={`text-xs ${isDarkWallpaper ? 'text-gray-400' : 'text-gray-500'}`}>Gmail, Outlook, or your provider</p>
+              </button>
+
+              <button onClick={() => openExternal('https://app.joinhandshake.com')} className={`w-full text-left p-3 rounded-lg transition-colors border ${
+                isDarkWallpaper 
+                  ? 'border-gray-600 hover:bg-gray-700' 
+                  : 'border-gray-200 hover:bg-gray-50'
+              }`}>
+                <p className={`font-medium ${isDarkWallpaper ? 'text-white' : 'text-gray-900'}`}>💼 Find jobs on Handshake</p>
+                <p className={`text-xs ${isDarkWallpaper ? 'text-gray-400' : 'text-gray-500'}`}>Apply for jobs and internships</p>
+              </button>
+
               <button className={`w-full text-left p-3 rounded-lg transition-colors border ${
                 isDarkWallpaper 
                   ? 'border-gray-600 hover:bg-gray-700' 

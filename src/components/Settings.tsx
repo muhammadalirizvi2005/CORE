@@ -11,6 +11,80 @@ export function Settings() {
 
   const [theme, setTheme] = useState('light');
 
+  const applyTheme = (t: string) => {
+    localStorage.setItem('theme', t);
+    const root = document.documentElement;
+    if (t === 'dark') {
+      root.classList.add('dark');
+    } else if (t === 'light') {
+      root.classList.remove('dark');
+    } else {
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (prefersDark) root.classList.add('dark'); else root.classList.remove('dark');
+    }
+  };
+
+  React.useEffect(() => {
+    const saved = localStorage.getItem('theme') || 'auto';
+    setTheme(saved);
+  }, []);
+
+  const openExternal = (url: string) => {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const getCanvasBaseUrl = (): string | null => {
+    const saved = localStorage.getItem('canvasBaseUrl');
+    return saved && saved.startsWith('https://') ? saved : null;
+  };
+
+  const promptForCanvasUrl = (): string | null => {
+    const input = window.prompt('Enter your Canvas URL (e.g., https://your-school.instructure.com):');
+    if (!input) return null;
+    const url = input.startsWith('http') ? input : `https://${input}`;
+    try {
+      const u = new URL(url);
+      if (!u.hostname.includes('instructure.com') && !u.hostname.includes('canvas.')) {
+        alert('That does not look like a valid Canvas domain.');
+        return null;
+      }
+      localStorage.setItem('canvasBaseUrl', `https://${u.hostname}`);
+      return `https://${u.hostname}`;
+    } catch {
+      alert('Please enter a valid URL.');
+      return null;
+    }
+  };
+
+  const openCanvas = () => {
+    const base = getCanvasBaseUrl() || promptForCanvasUrl();
+    if (base) openExternal(`${base}/login`);
+  };
+
+  const getEmailWebUrl = (): string | null => {
+    const saved = localStorage.getItem('emailWebUrl');
+    return saved && saved.startsWith('https://') ? saved : null;
+  };
+
+  const promptForEmailWebUrl = (): string | null => {
+    const input = window.prompt('Enter your email web URL (e.g., https://mail.google.com or https://outlook.office.com):');
+    if (!input) return null;
+    const url = input.startsWith('http') ? input : `https://${input}`;
+    try {
+      const u = new URL(url);
+      localStorage.setItem('emailWebUrl', `${u.protocol}//${u.hostname}`);
+      return `${u.protocol}//${u.hostname}`;
+    } catch {
+      alert('Please enter a valid URL.');
+      return null;
+    }
+  };
+
+  const openEmail = () => {
+    const base = getEmailWebUrl() || promptForEmailWebUrl();
+    if (base) openExternal(base);
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
@@ -109,11 +183,11 @@ export function Settings() {
           </div>
         </div>
 
-        {/* Calendar Integration */}
+        {/* Calendar & Career Integration */}
         <div className="bg-white rounded-xl shadow-sm p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
             <Calendar className="h-5 w-5 text-gray-600 mr-2" />
-            Calendar Integration
+            Calendar & Career Integration
           </h2>
           
           <div className="space-y-4">
@@ -123,7 +197,10 @@ export function Settings() {
                   <h3 className="font-medium text-gray-900">Google Calendar</h3>
                   <p className="text-sm text-gray-600">Sync tasks and deadlines with your Google Calendar</p>
                 </div>
-                <button className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                <button
+                  onClick={() => openExternal('https://calendar.google.com')}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
                   Connect
                 </button>
               </div>
@@ -135,8 +212,41 @@ export function Settings() {
                   <h3 className="font-medium text-gray-900">Canvas LMS</h3>
                   <p className="text-sm text-gray-600">Import assignments and due dates automatically</p>
                 </div>
-                <button className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                <button
+                  onClick={openCanvas}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
                   Connect
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 border border-gray-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-medium text-gray-900">Handshake</h3>
+                  <p className="text-sm text-gray-600">Discover jobs and internships through your university</p>
+                </div>
+                <button
+                  onClick={() => openExternal('https://app.joinhandshake.com')}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  Open
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 border border-gray-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-medium text-gray-900">Email</h3>
+                  <p className="text-sm text-gray-600">Open your email provider (Gmail, Outlook, etc.)</p>
+                </div>
+                <button
+                  onClick={openEmail}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  Open
                 </button>
               </div>
             </div>
@@ -157,7 +267,7 @@ export function Settings() {
                 {['light', 'dark', 'auto'].map((themeOption) => (
                   <button
                     key={themeOption}
-                    onClick={() => setTheme(themeOption)}
+                    onClick={() => { setTheme(themeOption); applyTheme(themeOption); }}
                     className={`px-4 py-2 rounded-lg border capitalize transition-colors ${
                       theme === themeOption
                         ? 'border-blue-500 bg-blue-50 text-blue-700'
