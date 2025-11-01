@@ -7,7 +7,14 @@ interface SettingsProps {
 }
 
 export function Settings({ currentUser, onLogout }: SettingsProps) {
-  const [notifications, setNotifications] = useState({
+  type Notifications = {
+    taskReminders: boolean;
+    wellnessCheckins: boolean;
+    deadlineAlerts: boolean;
+    weeklyReports: boolean;
+  };
+
+  const [notifications, setNotifications] = useState<Notifications>({
     taskReminders: true,
     wellnessCheckins: true,
     deadlineAlerts: true,
@@ -17,34 +24,85 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
   const [theme, setTheme] = useState('light');
 
   const applyTheme = (t: string) => {
-    localStorage.setItem('theme', t);
+    // Normalize synonyms (accept "white" as "light")
+    const normalized = t === 'white' ? 'light' : t;
+    localStorage.setItem('theme', normalized);
     const root = document.documentElement;
-    if (t === 'dark') {
+    if (normalized === 'dark') {
       root.classList.add('dark');
-    } else if (t === 'light') {
+    } else if (normalized === 'light') {
       root.classList.remove('dark');
     } else {
+      // 'auto' - follow system preference
       const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
       if (prefersDark) root.classList.add('dark'); else root.classList.remove('dark');
     }
   };
 
+  // On mount: load saved theme (support 'white' -> 'light') and apply it immediately.
   React.useEffect(() => {
-    const saved = localStorage.getItem('theme') || 'auto';
+    const savedRaw = localStorage.getItem('theme') || 'auto';
+    const saved = savedRaw === 'white' ? 'light' : savedRaw;
     setTheme(saved);
+    applyTheme(saved);
+
+    // If the user selected 'auto', respond to system color-scheme changes.
+    const mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = () => {
+      const current = localStorage.getItem('theme') || 'auto';
+      if ((current === 'auto') || (current === '')) {
+        applyTheme('auto');
+      }
+    };
+    if (mq && mq.addEventListener) {
+      mq.addEventListener('change', handleChange);
+    } else if (mq && mq.addListener) {
+      mq.addListener(handleChange as any);
+    }
+
+    return () => {
+      if (mq && mq.removeEventListener) {
+        mq.removeEventListener('change', handleChange);
+      } else if (mq && mq.removeListener) {
+        mq.removeListener(handleChange as any);
+      }
+    };
   }, []);
 
   const openExternal = (url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  const getCanvasBaseUrl = (): string | null => {
-    const saved = localStorage.getItem('canvasBaseUrl');
-    return saved && saved.startsWith('https://') ? saved : null;
+  // Profile persistence
+  type Profile = {
+    name: string;
+    email: string;
+    university: string;
+    graduationYear: string;
   };
 
+  const [profile, setProfile] = React.useState<Profile>(() => ({
+    name: currentUser || '',
+    email: `${currentUser?.toLowerCase() || ''}@university.edu`,
+    university: localStorage.getItem('profile_university') || 'State University',
+    graduationYear: localStorage.getItem('profile_graduationYear') || '2025',
+  }));
+
+  const saveProfile = () => {
+    localStorage.setItem('profile_name', profile.name);
+    localStorage.setItem('profile_email', profile.email);
+    localStorage.setItem('profile_university', profile.university);
+    localStorage.setItem('profile_graduationYear', profile.graduationYear);
+    alert('Profile saved');
+  };
+
+  // Canvas/Calendar/Email persisted connections (use state so UI updates immediately)
+  const [canvasBaseUrl, setCanvasBaseUrl] = React.useState<string | null>(null);
+  const [calendarUrl, setCalendarUrl] = React.useState<string | null>(null);
+  const [emailWebUrlState, setEmailWebUrlState] = React.useState<string | null>(null);
+
   const promptForCanvasUrl = (): string | null => {
-    const input = window.prompt('Enter your Canvas URL (e.g., https://your-school.instructure.com):');
+    const input = window.prompt('Enter your Canvas URL (e.g., your-school.instructure.com):');
     if (!input) return null;
     const url = input.startsWith('http') ? input : `https://${input}`;
     try {
@@ -53,8 +111,10 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
         alert('That does not look like a valid Canvas domain.');
         return null;
       }
-      localStorage.setItem('canvasBaseUrl', `https://${u.hostname}`);
-      return `https://${u.hostname}`;
+      const saved = `https://${u.hostname}`;
+      localStorage.setItem('canvasBaseUrl', saved);
+      setCanvasBaseUrl(saved);
+      return saved;
     } catch {
       alert('Please enter a valid URL.');
       return null;
@@ -62,8 +122,14 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
   };
 
   const openCanvas = () => {
-    const base = getCanvasBaseUrl() || promptForCanvasUrl();
+    const base = canvasBaseUrl || promptForCanvasUrl();
     if (base) openExternal(`${base}/login`);
+  };
+
+  const disconnectCanvas = () => {
+    localStorage.removeItem('canvasBaseUrl');
+    setCanvasBaseUrl(null);
+    alert('Canvas disconnected');
   };
 
   const getEmailWebUrl = (): string | null => {
@@ -72,13 +138,15 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
   };
 
   const promptForEmailWebUrl = (): string | null => {
-    const input = window.prompt('Enter your email web URL (e.g., https://mail.google.com or https://outlook.office.com):');
+    const input = window.prompt('Enter your email web URL (e.g., mail.google.com or outlook.office.com):');
     if (!input) return null;
     const url = input.startsWith('http') ? input : `https://${input}`;
     try {
       const u = new URL(url);
-      localStorage.setItem('emailWebUrl', `${u.protocol}//${u.hostname}`);
-      return `${u.protocol}//${u.hostname}`;
+      const saved = `${u.protocol}//${u.hostname}`;
+      localStorage.setItem('emailWebUrl', saved);
+      setEmailWebUrlState(saved);
+      return saved;
     } catch {
       alert('Please enter a valid URL.');
       return null;
@@ -86,9 +154,78 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
   };
 
   const openEmail = () => {
-    const base = getEmailWebUrl() || promptForEmailWebUrl();
+    const base = emailWebUrlState || promptForEmailWebUrl();
     if (base) openExternal(base);
   };
+
+  // Google Calendar persistence
+  const promptForCalendarUrl = (): string | null => {
+    const input = window.prompt('Enter your Google Calendar URL (e.g., calendar.google.com/calendar/u/0/r):');
+    if (!input) return null;
+    const url = input.startsWith('http') ? input : `https://${input}`;
+    try {
+      const u = new URL(url);
+      const saved = `${u.protocol}//${u.hostname}${u.pathname}`;
+      localStorage.setItem('calendarUrl', saved);
+      setCalendarUrl(saved);
+      return saved;
+    } catch {
+      alert('Please enter a valid URL.');
+      return null;
+    }
+  };
+
+  const openCalendar = () => {
+    const base = calendarUrl || promptForCalendarUrl();
+    if (base) openExternal(base);
+  };
+
+  const disconnectCalendar = () => {
+    localStorage.removeItem('calendarUrl');
+    setCalendarUrl(null);
+    alert('Google Calendar disconnected');
+  };
+
+  // Load notifications, profile, and connection URLs from localStorage on mount
+  React.useEffect(() => {
+    const savedNotifications = localStorage.getItem('notifications');
+    if (savedNotifications) {
+      try {
+        setNotifications(JSON.parse(savedNotifications));
+      } catch {
+        // ignore parse errors
+      }
+    }
+
+    // Load profile fields if saved
+    const savedName = localStorage.getItem('profile_name');
+    const savedEmail = localStorage.getItem('profile_email');
+    const savedUni = localStorage.getItem('profile_university');
+    const savedGrad = localStorage.getItem('profile_graduationYear');
+    setProfile((prev: Profile) => ({
+      name: savedName || prev.name,
+      email: savedEmail || prev.email,
+      university: savedUni || prev.university,
+      graduationYear: savedGrad || prev.graduationYear,
+    }));
+
+    // Load persisted connections
+    const savedCanvas = localStorage.getItem('canvasBaseUrl');
+    const savedCalendar = localStorage.getItem('calendarUrl');
+    const savedEmailWeb = localStorage.getItem('emailWebUrl');
+    setCanvasBaseUrl(savedCanvas && (savedCanvas.startsWith('http') ? savedCanvas : null));
+    setCalendarUrl(savedCalendar && (savedCalendar.startsWith('http') ? savedCalendar : null));
+    setEmailWebUrlState(savedEmailWeb && (savedEmailWeb.startsWith('http') ? savedEmailWeb : null));
+  }, []);
+
+  // Persist notifications whenever they change
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('notifications', JSON.stringify(notifications));
+    } catch {
+      // ignore
+    }
+  }, [notifications]);
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -111,7 +248,8 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
               <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
               <input
                 type="text"
-                defaultValue={currentUser}
+                value={profile.name}
+                onChange={(e) => setProfile(prev => ({ ...prev, name: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -120,7 +258,8 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
               <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
               <input
                 type="email"
-                defaultValue={`${currentUser.toLowerCase()}@university.edu`}
+                value={profile.email}
+                onChange={(e) => setProfile(prev => ({ ...prev, email: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -129,14 +268,19 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
               <label className="block text-sm font-medium text-gray-700 mb-2">University</label>
               <input
                 type="text"
-                defaultValue="State University"
+                value={profile.university}
+                onChange={(e) => setProfile(prev => ({ ...prev, university: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Graduation Year</label>
-              <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+              <select
+                value={profile.graduationYear}
+                onChange={(e) => setProfile(prev => ({ ...prev, graduationYear: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
                 <option>2025</option>
                 <option>2026</option>
                 <option>2027</option>
@@ -146,7 +290,7 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
           </div>
           
           <div className="mt-6">
-            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+            <button onClick={saveProfile} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
               Save Profile
             </button>
           </div>
@@ -202,12 +346,30 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
                   <h3 className="font-medium text-gray-900">Google Calendar</h3>
                   <p className="text-sm text-gray-600">Sync tasks and deadlines with your Google Calendar</p>
                 </div>
-                <button
-                  onClick={() => openExternal('https://calendar.google.com')}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                >
-                  Connect
-                </button>
+                {getCalendarUrl() ? (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-green-600">Connected</span>
+                    <button
+                      onClick={openCalendar}
+                      className="bg-blue-600 text-white px-3 py-1 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                    >
+                      Open
+                    </button>
+                    <button
+                      onClick={disconnectCalendar}
+                      className="bg-red-50 text-red-600 px-3 py-1 rounded-lg font-medium hover:bg-red-100 transition-colors"
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={openCalendar}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    Connect
+                  </button>
+                )}
               </div>
             </div>
             
@@ -217,12 +379,30 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
                   <h3 className="font-medium text-gray-900">Canvas LMS</h3>
                   <p className="text-sm text-gray-600">Import assignments and due dates automatically</p>
                 </div>
-                <button
-                  onClick={openCanvas}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                >
-                  Connect
-                </button>
+                {getCanvasBaseUrl() ? (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-green-600">Connected</span>
+                    <button
+                      onClick={openCanvas}
+                      className="bg-blue-600 text-white px-3 py-1 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                    >
+                      Open
+                    </button>
+                    <button
+                      onClick={() => { localStorage.removeItem('canvasBaseUrl'); alert('Canvas disconnected'); }}
+                      className="bg-red-50 text-red-600 px-3 py-1 rounded-lg font-medium hover:bg-red-100 transition-colors"
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={openCanvas}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    Connect
+                  </button>
+                )}
               </div>
             </div>
 
