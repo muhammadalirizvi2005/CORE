@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Play, Pause, RotateCcw, Coffee, Brain, Settings } from 'lucide-react';
+import { Modal } from './Modal';
 import { databaseService } from '../lib/database';
 import { authService } from '../lib/auth';
 
@@ -14,6 +15,14 @@ export function PomodoroTimer() {
     longBreak: 15
   });
   const [showSettings, setShowSettings] = useState(false);
+  const [showQuickNoteModal, setShowQuickNoteModal] = useState(false);
+  const [dndEnabled, setDndEnabled] = useState(false);
+
+  const dispatchToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    window.dispatchEvent(new CustomEvent('app-toast', { detail: { message, type } }));
+  };
+
+  const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer');
 
   const modes = {
     work: { duration: customTimes.work * 60, label: 'Focus Time', icon: Brain, color: 'bg-red-500' },
@@ -22,6 +31,10 @@ export function PomodoroTimer() {
   };
 
   useEffect(() => {
+    // persist sessions count
+    try {
+      localStorage.setItem('pomodoro_sessions', String(sessions));
+    } catch {}
     let interval: NodeJS.Timeout | null = null;
     
     if (isActive && timeLeft > 0) {
@@ -60,6 +73,35 @@ export function PomodoroTimer() {
       if (interval) clearInterval(interval);
     };
   }, [isActive, timeLeft, mode, sessions]);
+
+  // Load persisted pomodoro settings on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('pomodoro_customTimes');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setCustomTimes(prev => ({ ...prev, ...parsed }));
+      }
+      const savedSessions = localStorage.getItem('pomodoro_sessions');
+      if (savedSessions) setSessions(Number(savedSessions) || 0);
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  // Persist custom times whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('pomodoro_customTimes', JSON.stringify(customTimes));
+    } catch {}
+    // update timeLeft when durations change to reflect current mode
+    const durations = {
+      work: customTimes.work * 60,
+      shortBreak: customTimes.shortBreak * 60,
+      longBreak: customTimes.longBreak * 60,
+    } as const;
+    setTimeLeft(durations[mode]);
+  }, [customTimes, mode]);
 
   const saveSession = async (completed: boolean) => {
     try {
@@ -318,15 +360,30 @@ export function PomodoroTimer() {
           <div className="bg-white rounded-xl shadow-lg p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
             <div className="space-y-2">
-              <button className="w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors">
+              <button
+                onClick={() => openExternal('https://open.spotify.com/playlist/37i9dQZF1DX4sWSpwq3LiO')}
+                className="w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors"
+              >
                 <div className="font-medium text-gray-900">🎵 Focus Playlist</div>
                 <div className="text-sm text-gray-500">Open Spotify focus music</div>
               </button>
-              <button className="w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors">
+              <button
+                onClick={() => {
+                  setDndEnabled(v => {
+                    const next = !v;
+                    dispatchToast(next ? 'Do Not Disturb enabled' : 'Do Not Disturb disabled', 'info');
+                    return next;
+                  });
+                }}
+                className="w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors"
+              >
                 <div className="font-medium text-gray-900">📱 Do Not Disturb</div>
-                <div className="text-sm text-gray-500">Block distracting websites</div>
+                <div className="text-sm text-gray-500">Toggle distraction blocking (local only)</div>
               </button>
-              <button className="w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors">
+              <button
+                onClick={() => setShowQuickNoteModal(true)}
+                className="w-full text-left p-3 rounded-lg hover:bg-gray-50 transition-colors"
+              >
                 <div className="font-medium text-gray-900">📝 Quick Note</div>
                 <div className="text-sm text-gray-500">Jot down a quick thought</div>
               </button>
@@ -334,6 +391,26 @@ export function PomodoroTimer() {
           </div>
         </div>
       </div>
+      {/* Quick Note Modal */}
+      <Modal
+        title="Quick Note"
+        placeholder="Write a short note..."
+        initialValue=""
+        open={showQuickNoteModal}
+        onClose={() => setShowQuickNoteModal(false)}
+        onSubmit={(v: string) => {
+          try {
+            const saved = JSON.parse(localStorage.getItem('quick_notes') || '[]');
+            saved.unshift({ text: v, created_at: new Date().toISOString() });
+            localStorage.setItem('quick_notes', JSON.stringify(saved));
+            dispatchToast('Note saved', 'success');
+          } catch (err) {
+            console.error('Error saving quick note:', err);
+            dispatchToast('Failed to save note', 'error');
+          }
+          setShowQuickNoteModal(false);
+        }}
+      />
     </div>
   );
 }

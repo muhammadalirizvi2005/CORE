@@ -83,6 +83,13 @@ export interface StudyGroup {
 
 // Database service functions
 export const databaseService = {
+  // Helper to log supabase errors with operation context
+  _logAndThrow(op: string, error: any) {
+    if (error) {
+      console.error(`Supabase error [${op}]:`, error);
+      throw error;
+    }
+  },
   // Tasks
   async getTasks(userId: string): Promise<Task[]> {
     const { data, error } = await supabase
@@ -91,7 +98,7 @@ export const databaseService = {
       .eq('user_id', userId)
       .order('due_date', { ascending: true });
 
-    if (error) throw error;
+    this._logAndThrow('getTasks', error);
     return data || [];
   },
 
@@ -102,7 +109,7 @@ export const databaseService = {
       .select()
       .single();
 
-    if (error) throw error;
+    this._logAndThrow('createTask', error);
     return data;
   },
 
@@ -114,7 +121,7 @@ export const databaseService = {
       .select()
       .single();
 
-    if (error) throw error;
+    this._logAndThrow('updateTask', error);
     return data;
   },
 
@@ -124,7 +131,7 @@ export const databaseService = {
       .delete()
       .eq('id', taskId);
 
-    if (error) throw error;
+    this._logAndThrow('deleteTask', error);
   },
 
   // Courses
@@ -135,7 +142,7 @@ export const databaseService = {
       .eq('user_id', userId)
       .order('created_at', { ascending: true });
 
-    if (error) throw error;
+    this._logAndThrow('getCourses', error);
     return data || [];
   },
 
@@ -146,7 +153,7 @@ export const databaseService = {
       .select()
       .single();
 
-    if (error) throw error;
+    this._logAndThrow('createCourse', error);
     return data;
   },
 
@@ -158,7 +165,7 @@ export const databaseService = {
       .select()
       .single();
 
-    if (error) throw error;
+    this._logAndThrow('updateCourse', error);
     return data;
   },
 
@@ -175,7 +182,7 @@ export const databaseService = {
 
     const { data, error } = await query.order('due_date', { ascending: true });
 
-    if (error) throw error;
+    this._logAndThrow('getAssignments', error);
     return data || [];
   },
 
@@ -186,7 +193,7 @@ export const databaseService = {
       .select()
       .single();
 
-    if (error) throw error;
+    this._logAndThrow('createAssignment', error);
     return data;
   },
 
@@ -199,7 +206,7 @@ export const databaseService = {
       .order('entry_date', { ascending: false })
       .limit(limit);
 
-    if (error) throw error;
+    this._logAndThrow('getWellnessEntries', error);
     return data || [];
   },
 
@@ -210,7 +217,7 @@ export const databaseService = {
       .select()
       .single();
 
-    if (error) throw error;
+    this._logAndThrow('createWellnessEntry', error);
     return data;
   },
 
@@ -223,7 +230,10 @@ export const databaseService = {
       .eq('entry_date', today)
       .single();
 
-    if (error && error.code !== 'PGRST116') throw error;
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error fetching today wellness entry:', error);
+      throw error;
+    }
     return data || null;
   },
 
@@ -236,7 +246,7 @@ export const databaseService = {
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    if (error) throw error;
+    this._logAndThrow('getPomodoroSessions', error);
     return data || [];
   },
 
@@ -247,7 +257,7 @@ export const databaseService = {
       .select()
       .single();
 
-    if (error) throw error;
+    this._logAndThrow('createPomodoroSession', error);
     return data;
   },
 
@@ -262,8 +272,8 @@ export const databaseService = {
       `)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    
+    this._logAndThrow('getStudyGroups', error);
+
     return (data || []).map(group => ({
       ...group,
       member_count: group.study_group_members?.[0]?.count || 0,
@@ -278,7 +288,7 @@ export const databaseService = {
       .select()
       .single();
 
-    if (error) throw error;
+    this._logAndThrow('createStudyGroup', error);
     return data;
   },
 
@@ -287,7 +297,7 @@ export const databaseService = {
       .from('study_group_members')
       .insert([{ user_id: userId, group_id: groupId }]);
 
-    if (error) throw error;
+    this._logAndThrow('joinStudyGroup', error);
   },
 
   async leaveStudyGroup(userId: string, groupId: string): Promise<void> {
@@ -297,7 +307,7 @@ export const databaseService = {
       .eq('user_id', userId)
       .eq('group_id', groupId);
 
-    if (error) throw error;
+    this._logAndThrow('leaveStudyGroup', error);
   },
 
   async getUserStudyGroups(userId: string): Promise<string[]> {
@@ -306,7 +316,7 @@ export const databaseService = {
       .select('group_id')
       .eq('user_id', userId);
 
-    if (error) throw error;
+    this._logAndThrow('getUserStudyGroups', error);
     return (data || []).map(member => member.group_id);
   }
 };

@@ -83,8 +83,9 @@ export function StudyGroups() {
       joined: false
     }
   ];
+  const [groups, setGroups] = useState<StudyGroup[]>(mockGroups);
 
-  const filteredGroups = mockGroups.filter(group => {
+  const filteredGroups = groups.filter(group => {
     if (filter === 'joined') return group.joined;
     if (filter === 'available') return !group.joined && group.members < group.maxMembers;
     return true;
@@ -214,16 +215,35 @@ export function StudyGroups() {
             <div className="flex space-x-3">
               {group.joined ? (
                 <>
-                  <button className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2">
+                  <button
+                    onClick={() => {
+                      // For now, show a toast for chat (can be replaced with a real chat view later)
+                      try {
+                        window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: 'Opening group chat (coming soon)', type: 'info' } }));
+                      } catch {}
+                    }}
+                    className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
+                  >
                     <MessageCircle className="h-4 w-4" />
                     <span>Chat</span>
                   </button>
-                  <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                  <button
+                    onClick={() => {
+                      setGroups(prev => prev.map(g => g.id === group.id ? { ...g, joined: false } : g));
+                      try { window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: 'Left the group', type: 'info' } })); } catch {}
+                    }}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
                     Leave
                   </button>
                 </>
               ) : (
-                <button 
+                <button
+                  onClick={() => {
+                    if (group.members >= group.maxMembers) return;
+                    setGroups(prev => prev.map(g => g.id === group.id ? { ...g, joined: true, members: g.members + 1 } : g));
+                    try { window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: 'Joined group', type: 'success' } })); } catch {}
+                  }}
                   className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
                     group.members >= group.maxMembers
                       ? 'bg-gray-100 text-gray-400 cursor-not-allowed'

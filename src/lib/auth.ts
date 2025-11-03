@@ -33,9 +33,10 @@ export const authService = {
         .select('*')
         .eq('username', credentials.username)
         .eq('password_hash', passwordHash)
-        .limit(1);
+        .single();
 
-      if (error || !data || data.length === 0) {
+      if (error || !data) {
+        console.error('Login query error:', error);
         return { user: null, error: 'Invalid username or password' };
       }
 
@@ -85,9 +86,9 @@ export const authService = {
           }
         ])
         .select()
-        .limit(1);
+        .single();
 
-      if (error || !data || data.length === 0) {
+      if (error || !data) {
         console.error('Registration error:', error);
         return { user: null, error: 'Registration failed. Please try again.' };
       }
@@ -99,6 +100,27 @@ export const authService = {
     } catch (error) {
       console.error('Registration error:', error);
       return { user: null, error: 'Registration failed. Please try again.' };
+    }
+  },
+
+  // Update user-level connection/settings fields in the users table
+  async updateUserConnections(userId: string, updates: Record<string, any>): Promise<{ user: User | null; error: any | null }> {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .update(updates)
+        .eq('id', userId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating user connections:', error);
+        return { user: null, error };
+      }
+      return { user: data, error: null };
+    } catch (err) {
+      console.error('Unexpected error updating user connections:', err);
+      return { user: null, error: err };
     }
   },
 

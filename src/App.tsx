@@ -11,6 +11,7 @@ import { PomodoroTimer } from './components/PomodoroTimer';
 import { StudyGroups } from './components/StudyGroups';
 import { GradeTracker } from './components/GradeTracker';
 import { Navbar } from './components/Navbar';
+import { ToastContainer } from './components/Toast';
 import { authService } from './lib/auth';
 import type { User } from './lib/supabase';
 
@@ -29,6 +30,15 @@ function App() {
       setCurrentUser(user);
       setCurrentView('dashboard');
     }
+    // Listen for app-level navigation events dispatched by child components
+    const onNavigate = (e: any) => {
+      try {
+        const view = e?.detail?.view as ViewType | undefined;
+        if (view) setCurrentView(view);
+      } catch {}
+    };
+    window.addEventListener('navigate', onNavigate as EventListener);
+    return () => window.removeEventListener('navigate', onNavigate as EventListener);
   }, []);
 
   const handleGetStarted = () => {
@@ -87,6 +97,7 @@ function App() {
         currentUser={currentUser?.full_name || ''}
         onLogout={handleLogout}
       />
+      <ToastContainer />
       <main className="pt-16">
         {renderCurrentView()}
       </main>

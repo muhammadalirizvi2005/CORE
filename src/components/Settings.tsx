@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { authService } from '../lib/auth';
 import { User, Bell, Calendar, Palette, Shield, HelpCircle, LogOut } from 'lucide-react';
 import { Modal } from './Modal';
+import { getStoredTheme, setTheme as applyAppTheme, ThemeMode } from '../lib/theme';
 
 interface SettingsProps {
   currentUser: string;
@@ -22,56 +24,29 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
     weeklyReports: false,
   });
 
-  const [theme, setTheme] = useState('light');
+  const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme());
 
-  const applyTheme = (t: string) => {
-    // Normalize synonyms (accept "white" as "light")
-    const normalized = t === 'white' ? 'light' : t;
-    localStorage.setItem('theme', normalized);
-    const root = document.documentElement;
-    if (normalized === 'dark') {
-      root.classList.add('dark');
-    } else if (normalized === 'light') {
-      root.classList.remove('dark');
-    } else {
-      // 'auto' - follow system preference
-      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) root.classList.add('dark'); else root.classList.remove('dark');
-    }
-  };
-
-  // On mount: load saved theme (support 'white' -> 'light') and apply it immediately.
+  // Keep local UI state in sync with the centralized theme implementation.
   React.useEffect(() => {
-    const savedRaw = localStorage.getItem('theme') || 'auto';
-    const saved = savedRaw === 'white' ? 'light' : savedRaw;
-    setTheme(saved);
-    applyTheme(saved);
-
-    // If the user selected 'auto', respond to system color-scheme changes.
-    const mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = () => {
-      const current = localStorage.getItem('theme') || 'auto';
-      if ((current === 'auto') || (current === '')) {
-        applyTheme('auto');
+    setTheme(getStoredTheme());
+    const handler = (e: any) => {
+      try {
+        const t = e?.detail?.theme || getStoredTheme();
+        setTheme(t as ThemeMode);
+      } catch {
+        setTheme(getStoredTheme());
       }
     };
-    if (mq && mq.addEventListener) {
-      mq.addEventListener('change', handleChange);
-    } else if (mq && mq.addListener) {
-      mq.addListener(handleChange as any);
-    }
-
-    return () => {
-      if (mq && mq.removeEventListener) {
-        mq.removeEventListener('change', handleChange);
-      } else if (mq && mq.removeListener) {
-        mq.removeListener(handleChange as any);
-      }
-    };
+    window.addEventListener('theme-changed', handler as EventListener);
+    return () => window.removeEventListener('theme-changed', handler as EventListener);
   }, []);
 
   const openExternal = (url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const dispatchToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    window.dispatchEvent(new CustomEvent('app-toast', { detail: { message, type } }));
   };
 
   // Modal flow state (used instead of window.prompt)
@@ -114,7 +89,7 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
     localStorage.setItem('profile_email', profile.email);
     localStorage.setItem('profile_university', profile.university);
     localStorage.setItem('profile_graduationYear', profile.graduationYear);
-    alert('Profile saved');
+    window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: 'Profile saved', type: 'success' } }));
   };
 
   // Canvas/Calendar/Email persisted connections (use state so UI updates immediately)
@@ -128,32 +103,73 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
     try {
       const u = new URL(url);
       if (!u.hostname.includes('instructure.com') && !u.hostname.includes('canvas.')) {
-        alert('That does not look like a valid Canvas domain.');
+        dispatchToast('That does not look like a valid Canvas domain.', 'error');
         return;
       }
       const saved = `https://${u.hostname}`;
       localStorage.setItem('canvasBaseUrl', saved);
       setCanvasBaseUrl(saved);
+      // persist to Supabase users table if logged in
+      const user = authService.getCurrentUser();
+      if (user) {
+        authService.updateUserConnections(user.id, { canvas_base_url: saved, canvas_connected: true })
+          .then(() => dispatchToast('Canvas connection saved', 'success'))
+          .catch((err) => {
+            console.error('Error saving canvas connection to Supabase:', err);
+            dispatchToast('Saved locally but failed to persist to server', 'error');
+          });
+      } else {
+        dispatchToast('Canvas connection saved locally', 'success');
+      }
       closeModal();
     } catch {
-      alert('Please enter a valid URL.');
+      dispatchToast('Please enter a valid URL.', 'error');
     }
   };
 
   const openCanvas = () => {
-    if (canvasBaseUrl) return openExternal(`${canvasBaseUrl}/login`);
+    const oauthServer = import.meta.env.VITE_OAUTH_SERVER;
+    const user = authService.getCurrentUser();
+    if (oauthServer && user && canvasBaseUrl) {
+      const startUrl = `${oauthServer.replace(/\/$/, '')}/oauth/canvas/start?state=${encodeURIComponent(user.id)}&canvas_base=${encodeURIComponent(canvasBaseUrl)}`;
+      dispatchToast('Redirecting to Canvas to complete connection...', 'info');
+      window.location.href = startUrl;
+      return;
+    }
+
+    // fallback: ask user for their Canvas domain
     openModal('Connect Canvas', 'your-school.instructure.com', '', handleCanvasSubmit);
   };
 
   const disconnectCanvas = () => {
     localStorage.removeItem('canvasBaseUrl');
     setCanvasBaseUrl(null);
-    alert('Canvas disconnected');
+    const user = authService.getCurrentUser();
+    if (user) {
+      authService.updateUserConnections(user.id, { canvas_base_url: null, canvas_connected: false })
+        .then(() => dispatchToast('Canvas disconnected', 'success'))
+        .catch((err) => {
+          console.error('Error clearing canvas connection on server:', err);
+          dispatchToast('Disconnected locally but failed to update server', 'error');
+        });
+    } else {
+      dispatchToast('Canvas disconnected locally', 'info');
+    }
   };
 
   const getEmailWebUrl = (): string | null => {
     const saved = localStorage.getItem('emailWebUrl');
     return saved && saved.startsWith('https://') ? saved : null;
+  };
+
+  const getCalendarUrl = (): string | null => {
+    const saved = localStorage.getItem('calendarUrl');
+    return saved && saved.startsWith('http') ? saved : null;
+  };
+
+  const getCanvasBaseUrl = (): string | null => {
+    const saved = localStorage.getItem('canvasBaseUrl');
+    return saved && saved.startsWith('http') ? saved : null;
   };
 
   const handleEmailSubmit = (input: string) => {
@@ -165,8 +181,8 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
       localStorage.setItem('emailWebUrl', saved);
       setEmailWebUrlState(saved);
       closeModal();
-    } catch {
-      alert('Please enter a valid URL.');
+      } catch {
+      dispatchToast('Please enter a valid URL.', 'error');
     }
   };
 
@@ -184,21 +200,50 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
       const saved = `${u.protocol}//${u.hostname}${u.pathname}`;
       localStorage.setItem('calendarUrl', saved);
       setCalendarUrl(saved);
+      const user = authService.getCurrentUser();
+      if (user) {
+        authService.updateUserConnections(user.id, { calendar_url: saved, calendar_connected: true })
+          .then(() => dispatchToast('Calendar connection saved', 'success'))
+          .catch((err) => {
+            console.error('Error saving calendar connection to Supabase:', err);
+            dispatchToast('Saved locally but failed to persist to server', 'error');
+          });
+      } else {
+        dispatchToast('Calendar connection saved locally', 'success');
+      }
       closeModal();
     } catch {
-      alert('Please enter a valid URL.');
+      dispatchToast('Please enter a valid URL.', 'error');
     }
   };
 
   const openCalendar = () => {
-    if (calendarUrl) return openExternal(calendarUrl);
+    const oauthServer = import.meta.env.VITE_OAUTH_SERVER;
+    const user = authService.getCurrentUser();
+    if (oauthServer && user) {
+      const startUrl = `${oauthServer.replace(/\/$/, '')}/oauth/google/start?state=${encodeURIComponent(user.id)}`;
+      dispatchToast('Redirecting to Google to connect your calendar...', 'info');
+      window.location.href = startUrl;
+      return;
+    }
+
     openModal('Connect Google Calendar', 'calendar.google.com/..', '', handleCalendarSubmit);
   };
 
   const disconnectCalendar = () => {
     localStorage.removeItem('calendarUrl');
     setCalendarUrl(null);
-    alert('Google Calendar disconnected');
+    const user = authService.getCurrentUser();
+    if (user) {
+      authService.updateUserConnections(user.id, { calendar_url: null, calendar_connected: false })
+        .then(() => dispatchToast('Google Calendar disconnected', 'success'))
+        .catch((err) => {
+          console.error('Error clearing calendar connection on server:', err);
+          dispatchToast('Disconnected locally but failed to update server', 'error');
+        });
+    } else {
+      dispatchToast('Google Calendar disconnected locally', 'info');
+    }
   };
 
   // Load notifications, profile, and connection URLs from localStorage on mount
@@ -418,7 +463,7 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
                       Open
                     </button>
                     <button
-                      onClick={() => { localStorage.removeItem('canvasBaseUrl'); alert('Canvas disconnected'); }}
+                      onClick={disconnectCanvas}
                       className="bg-red-50 text-red-600 px-3 py-1 rounded-lg font-medium hover:bg-red-100 transition-colors"
                     >
                       Disconnect
@@ -481,7 +526,7 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
                 {['light', 'dark', 'auto'].map((themeOption) => (
                   <button
                     key={themeOption}
-                    onClick={() => { setTheme(themeOption); applyTheme(themeOption); }}
+                    onClick={() => { setTheme(themeOption as ThemeMode); applyAppTheme(themeOption); }}
                     className={`px-4 py-2 rounded-lg border capitalize transition-colors ${
                       theme === themeOption
                         ? 'border-blue-500 bg-blue-50 text-blue-700'
@@ -501,7 +546,7 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
           <h2 className="text-xl font-bold text-gray-900 mb-4">Other Settings</h2>
           
           <div className="space-y-3">
-            <button className="w-full text-left p-3 hover:bg-gray-50 rounded-lg flex items-center">
+            <button onClick={() => dispatchToast('Privacy & Security is coming soon', 'info')} className="w-full text-left p-3 hover:bg-gray-50 rounded-lg flex items-center">
               <Shield className="h-5 w-5 text-gray-600 mr-3" />
               <div>
                 <h3 className="font-medium text-gray-900">Privacy & Security</h3>
@@ -509,7 +554,7 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
               </div>
             </button>
             
-            <button className="w-full text-left p-3 hover:bg-gray-50 rounded-lg flex items-center">
+            <button onClick={() => openExternal('mailto:support@core.app')} className="w-full text-left p-3 hover:bg-gray-50 rounded-lg flex items-center">
               <HelpCircle className="h-5 w-5 text-gray-600 mr-3" />
               <div>
                 <h3 className="font-medium text-gray-900">Help & Support</h3>

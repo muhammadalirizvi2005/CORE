@@ -5,6 +5,7 @@ import { authService } from '../lib/auth';
 
 export function GradeTracker() {
   const [showAddCourse, setShowAddCourse] = useState(false);
+  const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<string>('');
   const [courses, setCourses] = useState<Course[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -65,6 +66,29 @@ export function GradeTracker() {
       });
     } catch (error) {
       console.error('Error creating course:', error);
+    }
+  };
+
+  const handleUpdateCourse = async () => {
+    try {
+      const user = authService.getCurrentUser();
+      if (!user || !editingCourseId) return;
+
+      const updates = {
+        name: newCourse.name,
+        code: newCourse.code,
+        credits: newCourse.credits,
+        target_grade: newCourse.target_grade,
+        color: newCourse.color
+      };
+
+      const updated = await databaseService.updateCourse(editingCourseId, updates);
+      setCourses(prev => prev.map(c => c.id === editingCourseId ? updated : c));
+      setEditingCourseId(null);
+      setShowAddCourse(false);
+      setNewCourse({ name: '', code: '', credits: 3, target_grade: 90, color: 'bg-blue-500' });
+    } catch (error) {
+      console.error('Error updating course:', error);
     }
   };
 
@@ -192,7 +216,11 @@ export function GradeTracker() {
                 <p className="text-sm text-gray-600 mb-3">{course.name}</p>
               </div>
               
-              <button className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => {
+                setEditingCourseId(course.id);
+                setNewCourse({ name: course.name, code: course.code, credits: course.credits, target_grade: course.target_grade, color: course.color });
+                setShowAddCourse(true);
+              }} className="text-gray-400 hover:text-gray-600">
                 <Edit className="h-4 w-4" />
               </button>
             </div>
@@ -237,15 +265,17 @@ export function GradeTracker() {
               </div>
               
               {courseAssignments.length > 3 && (
-                <button className="text-blue-600 text-xs mt-2 hover:text-blue-700">
+                <button
+                  onClick={() => setSelectedCourse(course.id)}
+                  className="text-blue-600 text-xs mt-2 hover:text-blue-700"
+                >
                   View all {courseAssignments.length} assignments
                 </button>
-              )}
+
+              </div>
             </div>
-          </div>
           );
         }))}
-      </div>
 
       {/* Grade Distribution Chart */}
       <div className="bg-white rounded-xl shadow-sm p-6">
@@ -378,16 +408,16 @@ export function GradeTracker() {
             
             <div className="flex space-x-3 mt-6">
               <button
-                onClick={() => setShowAddCourse(false)}
+                onClick={() => { setShowAddCourse(false); setEditingCourseId(null); }}
                 className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
-                onClick={handleCreateCourse}
+                onClick={editingCourseId ? handleUpdateCourse : handleCreateCourse}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                Add Course
+                {editingCourseId ? 'Update Course' : 'Add Course'}
               </button>
             </div>
           </div>

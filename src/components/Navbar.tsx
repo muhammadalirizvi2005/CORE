@@ -1,5 +1,6 @@
 import React from 'react';
 import { Home, CheckSquare, Heart, BarChart3, Settings, LogOut, ChevronDown, Clock, Users, GraduationCap, Brain } from 'lucide-react';
+import { getStoredTheme, ThemeMode } from '../lib/theme';
 import type { ViewType } from '../App';
 
 interface NavbarProps {
@@ -10,22 +11,31 @@ interface NavbarProps {
 }
 
 export function Navbar({ currentView, onViewChange, currentUser, onLogout }: NavbarProps) {
-  const [theme, setTheme] = React.useState<'light' | 'dark' | 'auto'>(() => {
-    const raw = localStorage.getItem('theme') || 'auto';
-    return raw === 'white' ? 'light' : (raw as 'light' | 'dark' | 'auto');
-  });
+  const [theme, setTheme] = React.useState<ThemeMode>(() => getStoredTheme());
 
   const [canvasConnected, setCanvasConnected] = React.useState(false);
   const [calendarConnected, setCalendarConnected] = React.useState(false);
   const [emailConnected, setEmailConnected] = React.useState(false);
 
   React.useEffect(() => {
-    const unsub = () => {};
-    setTheme((localStorage.getItem('theme') || 'auto') as any);
+  const unsub = () => {};
+  setTheme(getStoredTheme());
     setCanvasConnected(!!localStorage.getItem('canvasBaseUrl'));
     setCalendarConnected(!!localStorage.getItem('calendarUrl'));
     setEmailConnected(!!localStorage.getItem('emailWebUrl'));
-    return unsub;
+    // Listen for theme changes from Settings or initial theme application
+    const onThemeChanged = (e: any) => {
+      try {
+        const t = e?.detail?.theme || localStorage.getItem('theme') || 'auto';
+        setTheme(t === 'white' ? 'light' : t);
+      } catch {}
+    };
+    window.addEventListener('theme-changed', onThemeChanged as EventListener);
+
+    return () => {
+      window.removeEventListener('theme-changed', onThemeChanged as EventListener);
+      unsub();
+    };
   }, []);
   const navItems = [
     { id: 'dashboard' as ViewType, icon: Home, label: 'Dashboard' },
@@ -73,7 +83,7 @@ export function Navbar({ currentView, onViewChange, currentUser, onLogout }: Nav
 
           {/* Profile */}
           <div className="relative group">
-            <button className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors">
+            <button onClick={() => onViewChange('settings')} className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors">
               <div className="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center">
                 <span className="text-white text-sm font-medium">
                   {currentUser.charAt(0).toUpperCase()}

@@ -109,6 +109,8 @@ export function WellnessTracker() {
     },
   ];
 
+  const openExternal = (url: string) => window.open(url, '_blank', 'noopener,noreferrer');
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
@@ -273,20 +275,20 @@ export function WellnessTracker() {
             <h3 className="text-lg font-bold text-gray-900 mb-4">Campus Resources</h3>
             
             <div className="space-y-3">
-              <div className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+              <button onClick={() => openExternal('https://www.google.com/search?q=student+counseling+center')} className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
                 <h4 className="font-medium text-gray-900">Student Counseling Center</h4>
                 <p className="text-xs text-gray-500">Free confidential support</p>
-              </div>
-              
-              <div className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+              </button>
+
+              <button onClick={() => openExternal('https://www.crisistextline.org')} className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
                 <h4 className="font-medium text-gray-900">Crisis Text Line</h4>
                 <p className="text-xs text-gray-500">Text HOME to 741741</p>
-              </div>
-              
-              <div className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+              </button>
+
+              <button onClick={() => openExternal('https://www.mindful.org')} className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
                 <h4 className="font-medium text-gray-900">Wellness Workshops</h4>
                 <p className="text-xs text-gray-500">Weekly stress management sessions</p>
-              </div>
+              </button>
             </div>
           </div>
 
@@ -294,7 +296,7 @@ export function WellnessTracker() {
           <div className="bg-red-50 border border-red-200 p-4 rounded-lg">
             <h4 className="font-medium text-red-900 mb-2">Need immediate help?</h4>
             <p className="text-sm text-red-700 mb-3">If you're having thoughts of self-harm, please reach out immediately.</p>
-            <button className="w-full bg-red-600 text-white py-2 rounded-lg font-medium hover:bg-red-700 transition-colors">
+            <button onClick={() => window.open('https://988lifeline.org', '_blank', 'noopener,noreferrer')} className="w-full bg-red-600 text-white py-2 rounded-lg font-medium hover:bg-red-700 transition-colors">
               Get Help Now
             </button>
           </div>

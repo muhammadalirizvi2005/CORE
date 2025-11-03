@@ -51,12 +51,12 @@ export function Dashboard() {
   };
 
   const quickActions = [
-    { icon: CheckSquare, label: 'Add Task', color: 'bg-blue-500', href: '/tasks' },
-    { icon: Timer, label: 'Start Pomodoro', color: 'bg-red-500', href: '/pomodoro' },
-    { icon: Brain, label: 'Wellness Check', color: 'bg-green-500', href: '/wellness' },
-    { icon: BookOpen, label: 'Add Grade', color: 'bg-purple-500', href: '/grades' },
-    { icon: Users, label: 'Study Groups', color: 'bg-orange-500', href: '/groups' },
-    { icon: BarChart3, label: 'View Analytics', color: 'bg-indigo-500', href: '/analytics' }
+    { icon: CheckSquare, label: 'Add Task', color: 'bg-blue-500', view: 'tasks' },
+    { icon: Timer, label: 'Start Pomodoro', color: 'bg-red-500', view: 'pomodoro' },
+    { icon: Brain, label: 'Wellness Check', color: 'bg-green-500', view: 'wellness' },
+    { icon: BookOpen, label: 'Add Grade', color: 'bg-purple-500', view: 'grades' },
+    { icon: Users, label: 'Study Groups', color: 'bg-orange-500', view: 'study-groups' },
+    { icon: BarChart3, label: 'View Analytics', color: 'bg-indigo-500', view: 'analytics' }
   ];
 
   return (
@@ -131,6 +131,14 @@ export function Dashboard() {
           {quickActions.map((action, index) => (
             <button
               key={index}
+              onClick={() => {
+                try {
+                  window.dispatchEvent(new CustomEvent('navigate', { detail: { view: action.view } }));
+                } catch {
+                  // fallback to hash navigation
+                  window.location.hash = `#${action.view}`;
+                }
+              }}
               className="bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow group"
             >
               <div className={`${action.color} p-3 rounded-lg mb-3 group-hover:scale-110 transition-transform`}>

@@ -5,6 +5,7 @@ import { authService } from '../lib/auth';
 
 export function TaskManager() {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'class' | 'work' | 'extracurricular' | 'personal'>('all');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +54,7 @@ export function TaskManager() {
       const createdTask = await databaseService.createTask(user.id, taskData);
       setTasks(prev => [createdTask, ...prev]);
       setShowAddModal(false);
+  setEditingTaskId(null);
       setNewTask({
         title: '',
         description: '',
@@ -63,6 +65,27 @@ export function TaskManager() {
       });
     } catch (error) {
       console.error('Error creating task:', error);
+    }
+  };
+
+  const handleUpdateTask = async () => {
+    try {
+      if (!editingTaskId) return;
+      const updates: any = {
+        title: newTask.title,
+        description: newTask.description,
+        category: newTask.category,
+        priority: newTask.priority,
+        due_date: newTask.due_date || null,
+        course_code: newTask.course_code,
+      };
+      const updated = await databaseService.updateTask(editingTaskId, updates);
+      setTasks(prev => prev.map(t => t.id === editingTaskId ? updated : t));
+      setShowAddModal(false);
+      setEditingTaskId(null);
+      setNewTask({ title: '', description: '', category: 'class', priority: 'medium', due_date: '', course_code: '' });
+    } catch (error) {
+      console.error('Error updating task:', error);
     }
   };
 
@@ -221,7 +244,12 @@ export function TaskManager() {
               </div>
               
               <div className="flex flex-col space-y-2">
-                <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                <button onClick={() => {
+                  // open modal in edit mode
+                  setEditingTaskId(task.id);
+                  setNewTask({ title: task.title, description: task.description, category: task.category, priority: task.priority, due_date: task.due_date || '', course_code: task.course_code });
+                  setShowAddModal(true);
+                }} className="text-blue-600 hover:text-blue-800 text-sm font-medium">
                   Edit
                 </button>
                 <button 
@@ -325,10 +353,10 @@ export function TaskManager() {
                 Cancel
               </button>
               <button
-                onClick={handleCreateTask}
+                onClick={editingTaskId ? handleUpdateTask : handleCreateTask}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
-                Add Task
+                {editingTaskId ? 'Update Task' : 'Add Task'}
               </button>
             </div>
           </div>
