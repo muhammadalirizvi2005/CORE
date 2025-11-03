@@ -10,6 +10,23 @@ interface NavbarProps {
 }
 
 export function Navbar({ currentView, onViewChange, currentUser, onLogout }: NavbarProps) {
+  const [theme, setTheme] = React.useState<'light' | 'dark' | 'auto'>(() => {
+    const raw = localStorage.getItem('theme') || 'auto';
+    return raw === 'white' ? 'light' : (raw as 'light' | 'dark' | 'auto');
+  });
+
+  const [canvasConnected, setCanvasConnected] = React.useState(false);
+  const [calendarConnected, setCalendarConnected] = React.useState(false);
+  const [emailConnected, setEmailConnected] = React.useState(false);
+
+  React.useEffect(() => {
+    const unsub = () => {};
+    setTheme((localStorage.getItem('theme') || 'auto') as any);
+    setCanvasConnected(!!localStorage.getItem('canvasBaseUrl'));
+    setCalendarConnected(!!localStorage.getItem('calendarUrl'));
+    setEmailConnected(!!localStorage.getItem('emailWebUrl'));
+    return unsub;
+  }, []);
   const navItems = [
     { id: 'dashboard' as ViewType, icon: Home, label: 'Dashboard' },
     { id: 'tasks' as ViewType, icon: CheckSquare, label: 'Tasks' },
@@ -28,6 +45,12 @@ export function Navbar({ currentView, onViewChange, currentUser, onLogout }: Nav
           <div className="flex items-center space-x-2">
             <Brain className="h-8 w-8 text-green-500" />
             <span className="text-xl font-bold text-blue-600">CORE</span>
+            <div className="ml-3 flex items-center space-x-2 text-xs">
+              <span className="px-2 py-1 rounded bg-gray-100 text-gray-700">{theme}</span>
+              {canvasConnected && <span className="px-2 py-1 rounded bg-green-50 text-green-600">Canvas</span>}
+              {calendarConnected && <span className="px-2 py-1 rounded bg-green-50 text-green-600">Calendar</span>}
+              {emailConnected && <span className="px-2 py-1 rounded bg-green-50 text-green-600">Email</span>}
+            </div>
           </div>
 
           {/* Desktop Navigation */}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User, Bell, Calendar, Palette, Shield, HelpCircle, LogOut } from 'lucide-react';
+import { Modal } from './Modal';
 
 interface SettingsProps {
   currentUser: string;
@@ -73,6 +74,26 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  // Modal flow state (used instead of window.prompt)
+  const [modalOpen, setModalOpen] = React.useState(false);
+  const [modalTitle, setModalTitle] = React.useState('');
+  const [modalPlaceholder, setModalPlaceholder] = React.useState('');
+  const [modalInitial, setModalInitial] = React.useState('');
+  const [modalHandler, setModalHandler] = React.useState<((v: string) => void) | null>(null);
+
+  const openModal = (title: string, placeholder: string, initial: string, handler: (v: string) => void) => {
+    setModalTitle(title);
+    setModalPlaceholder(placeholder);
+    setModalInitial(initial);
+    setModalHandler(() => handler);
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setModalHandler(null);
+  };
+
   // Profile persistence
   type Profile = {
     name: string;
@@ -101,29 +122,27 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
   const [calendarUrl, setCalendarUrl] = React.useState<string | null>(null);
   const [emailWebUrlState, setEmailWebUrlState] = React.useState<string | null>(null);
 
-  const promptForCanvasUrl = (): string | null => {
-    const input = window.prompt('Enter your Canvas URL (e.g., your-school.instructure.com):');
-    if (!input) return null;
+  const handleCanvasSubmit = (input: string) => {
+    if (!input) return closeModal();
     const url = input.startsWith('http') ? input : `https://${input}`;
     try {
       const u = new URL(url);
       if (!u.hostname.includes('instructure.com') && !u.hostname.includes('canvas.')) {
         alert('That does not look like a valid Canvas domain.');
-        return null;
+        return;
       }
       const saved = `https://${u.hostname}`;
       localStorage.setItem('canvasBaseUrl', saved);
       setCanvasBaseUrl(saved);
-      return saved;
+      closeModal();
     } catch {
       alert('Please enter a valid URL.');
-      return null;
     }
   };
 
   const openCanvas = () => {
-    const base = canvasBaseUrl || promptForCanvasUrl();
-    if (base) openExternal(`${base}/login`);
+    if (canvasBaseUrl) return openExternal(`${canvasBaseUrl}/login`);
+    openModal('Connect Canvas', 'your-school.instructure.com', '', handleCanvasSubmit);
   };
 
   const disconnectCanvas = () => {
@@ -137,47 +156,43 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
     return saved && saved.startsWith('https://') ? saved : null;
   };
 
-  const promptForEmailWebUrl = (): string | null => {
-    const input = window.prompt('Enter your email web URL (e.g., mail.google.com or outlook.office.com):');
-    if (!input) return null;
+  const handleEmailSubmit = (input: string) => {
+    if (!input) return closeModal();
     const url = input.startsWith('http') ? input : `https://${input}`;
     try {
       const u = new URL(url);
       const saved = `${u.protocol}//${u.hostname}`;
       localStorage.setItem('emailWebUrl', saved);
       setEmailWebUrlState(saved);
-      return saved;
+      closeModal();
     } catch {
       alert('Please enter a valid URL.');
-      return null;
     }
   };
 
   const openEmail = () => {
-    const base = emailWebUrlState || promptForEmailWebUrl();
-    if (base) openExternal(base);
+    if (emailWebUrlState) return openExternal(emailWebUrlState);
+    openModal('Connect Email', 'mail.google.com or outlook.office.com', '', handleEmailSubmit);
   };
 
   // Google Calendar persistence
-  const promptForCalendarUrl = (): string | null => {
-    const input = window.prompt('Enter your Google Calendar URL (e.g., calendar.google.com/calendar/u/0/r):');
-    if (!input) return null;
+  const handleCalendarSubmit = (input: string) => {
+    if (!input) return closeModal();
     const url = input.startsWith('http') ? input : `https://${input}`;
     try {
       const u = new URL(url);
       const saved = `${u.protocol}//${u.hostname}${u.pathname}`;
       localStorage.setItem('calendarUrl', saved);
       setCalendarUrl(saved);
-      return saved;
+      closeModal();
     } catch {
       alert('Please enter a valid URL.');
-      return null;
     }
   };
 
   const openCalendar = () => {
-    const base = calendarUrl || promptForCalendarUrl();
-    if (base) openExternal(base);
+    if (calendarUrl) return openExternal(calendarUrl);
+    openModal('Connect Google Calendar', 'calendar.google.com/..', '', handleCalendarSubmit);
   };
 
   const disconnectCalendar = () => {
@@ -217,6 +232,20 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
     setCalendarUrl(savedCalendar && (savedCalendar.startsWith('http') ? savedCalendar : null));
     setEmailWebUrlState(savedEmailWeb && (savedEmailWeb.startsWith('http') ? savedEmailWeb : null));
   }, []);
+
+  // Render modal component and pass handlers
+  const renderModal = () => (
+    <Modal
+      title={modalTitle}
+      initialValue={modalInitial}
+      open={modalOpen}
+      onClose={closeModal}
+      placeholder={modalPlaceholder}
+      onSubmit={(v: string) => {
+        if (modalHandler) modalHandler(v);
+      }}
+    />
+  );
 
   // Persist notifications whenever they change
   React.useEffect(() => {
@@ -501,6 +530,7 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
           </div>
         </div>
       </div>
-    </div>
+        {renderModal()}
+      </div>
   );
 }
