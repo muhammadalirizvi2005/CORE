@@ -1,3 +1,33 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Basic global colors for themes so switching to .dark has an immediate visual effect
+	 even when components don't include dark: variants. We keep Tailwind utilities as primary
+	 but define fallback background/text colors and a smooth transition. */
+:root {
+	--app-bg: #ffffff;
+	--app-text: #111827; /* gray-900 */
+}
+
+html.dark {
+	--app-bg: #0b1220; /* dark background */
+	--app-text: #e6eef8; /* light text */
+}
+
+html, body, #root {
+	background-color: var(--app-bg);
+	color: var(--app-text);
+	transition: background-color 200ms ease, color 200ms ease;
+}
+
+/* Ensure common white card backgrounds invert slightly in dark mode when no dark: variants are present */
+.dark .bg-white {
+	background-color: #0f1724 !important;
+}
+.dark .text-gray-900 {
+	color: #e6eef8 !important;
+}
+.dark .text-gray-600 {
+	color: #9aa6b8 !important;
+}
