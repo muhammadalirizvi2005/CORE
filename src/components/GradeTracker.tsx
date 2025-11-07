@@ -271,11 +271,12 @@ export function GradeTracker() {
                 >
                   View all {courseAssignments.length} assignments
                 </button>
-
-              </div>
+              )}
             </div>
+          </div>
           );
         }))}
+      </div>
 
       {/* Grade Distribution Chart */}
       <div className="bg-white rounded-xl shadow-sm p-6">
