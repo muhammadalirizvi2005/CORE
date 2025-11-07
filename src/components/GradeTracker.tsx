@@ -258,7 +258,7 @@ export function GradeTracker() {
                       <span className="text-gray-600 truncate">{assignment.name}</span>
                     </div>
                     <span className={`font-medium ${getGradeColor((assignment.score / assignment.max_score) * 100)}`}>
-                      {assignment.score}/{assignment.max_score}
+                      {`${assignment.score}/${assignment.max_score}`}
                     </span>
                   </div>
                 ))}
