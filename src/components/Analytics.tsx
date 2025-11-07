@@ -95,8 +95,8 @@ export function Analytics() {
                       className="bg-blue-600 h-6 rounded-full flex items-center justify-end pr-2"
                       style={{ width: `${completionRate}%` }}
                     >
-                      <span className="text-white text-xs font-medium">
-                        {day.completed}/{day.total}
+                        <span className="text-white text-xs font-medium">
+                        {`${day.completed}/${day.total}`}
                       </span>
                     </div>
                   </div>
@@ -173,7 +173,7 @@ export function Analytics() {
                   <div key={index}>
                     <div className="flex justify-between text-sm mb-1">
                       <span className="font-medium text-gray-700">{item.category}</span>
-                      <span className="text-gray-600">{item.completed}/{item.total}</span>
+                      <span className="text-gray-600">{`${item.completed}/${item.total}`}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div

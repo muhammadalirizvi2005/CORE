@@ -192,7 +192,7 @@ export function StudyGroups() {
             <div className="space-y-2 mb-4">
               <div className="flex items-center text-sm text-gray-600">
                 <Users className="h-4 w-4 mr-2" />
-                {group.members}/{group.maxMembers} members
+                {`${group.members}/${group.maxMembers} members`}
               </div>
               
               <div className="flex items-center text-sm text-gray-600">
