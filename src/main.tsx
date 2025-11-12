@@ -4,8 +4,7 @@ import App from './App.tsx';
 import './index.css';
 import { initTheme } from './lib/theme';
 
-// Initialize theme before React mounts so the initial paint uses correct colors and
-// the rest of the app gets a 'theme-changed' event.
+// Initialize theme before React mounts.
 initTheme();
 
 createRoot(document.getElementById('root')!).render(

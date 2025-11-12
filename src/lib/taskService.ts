@@ -1,0 +1,72 @@
+import { supabase } from './supabase';
+import type { Task } from './database';
+
+export const taskService = {
+  async createTask(userId: string, taskData: Omit<Task, 'id' | 'user_id' | 'created_at' | 'updated_at'>) {
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert([{
+        ...taskData,
+        user_id: userId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }])
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error('Error creating task:', error);
+      throw error;
+    }
+
+    return data;
+  },
+
+  async getTasks(userId: string) {
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching tasks:', error);
+      throw error;
+    }
+
+    return data;
+  },
+
+  async updateTask(taskId: string, userId: string, updates: Partial<Task>) {
+    const { data, error } = await supabase
+      .from('tasks')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', taskId)
+      .eq('user_id', userId) // Ensure user can only update their own tasks
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error('Error updating task:', error);
+      throw error;
+    }
+
+    return data;
+  },
+
+  async deleteTask(taskId: string, userId: string) {
+    const { error } = await supabase
+      .from('tasks')
+      .delete()
+      .eq('id', taskId)
+      .eq('user_id', userId); // Ensure user can only delete their own tasks
+
+    if (error) {
+      console.error('Error deleting task:', error);
+      throw error;
+    }
+  }
+};

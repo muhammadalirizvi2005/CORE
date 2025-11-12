@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
+// (duplicate useEffect import removed)
 import { LandingPage } from './components/LandingPage';
 import { LoginForm } from './components/LoginForm';
 import { Dashboard } from './components/Dashboard';
@@ -13,32 +13,38 @@ import { GradeTracker } from './components/GradeTracker';
 import { Navbar } from './components/Navbar';
 import { ToastContainer } from './components/Toast';
 import { authService } from './lib/auth';
-import type { User } from './lib/supabase';
+import type { User } from '@supabase/supabase-js';
 
 export type ViewType = 'landing' | 'login' | 'dashboard' | 'tasks' | 'wellness' | 'analytics' | 'settings' | 'pomodoro' | 'study-groups' | 'grades';
 
 function App() {
   const [currentView, setCurrentView] = useState<ViewType>('landing');
-  const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(authService.isAuthenticated());
   const [currentUser, setCurrentUser] = useState<User | null>(authService.getCurrentUser());
 
   useEffect(() => {
-    // Check for existing authentication on app load
+    // Initialize auth snapshot
     const user = authService.getCurrentUser();
     if (user) {
       setIsAuthenticated(true);
       setCurrentUser(user);
       setCurrentView('dashboard');
     }
-    // Listen for app-level navigation events dispatched by child components
-    const onNavigate = (e: any) => {
-      try {
-        const view = e?.detail?.view as ViewType | undefined;
-        if (view) setCurrentView(view);
-      } catch {}
+    const navHandler = (e: any) => {
+      const view = e?.detail?.view as ViewType | undefined;
+      if (view) setCurrentView(view);
     };
-    window.addEventListener('navigate', onNavigate as EventListener);
-    return () => window.removeEventListener('navigate', onNavigate as EventListener);
+    window.addEventListener('navigate', navHandler as EventListener);
+    const sub = authService.onAuthStateChange(u => {
+      setCurrentUser(u);
+      setIsAuthenticated(!!u);
+      if (!u) setCurrentView('landing');
+    });
+    return () => {
+      window.removeEventListener('navigate', navHandler as EventListener);
+      // Supabase v2 returns { data: { subscription } }
+      (sub as any)?.data?.subscription?.unsubscribe?.();
+    };
   }, []);
 
   const handleGetStarted = () => {
@@ -65,7 +71,7 @@ function App() {
       case 'login':
         return <LoginForm onLogin={handleLogin} />;
       case 'dashboard':
-        return <Dashboard currentUser={currentUser?.full_name || ''} />;
+        return <Dashboard />;
       case 'tasks':
         return <TaskManager />;
       case 'wellness':
@@ -73,7 +79,7 @@ function App() {
       case 'analytics':
         return <Analytics />;
       case 'settings':
-        return <Settings currentUser={currentUser?.full_name || ''} onLogout={handleLogout} />;
+        return <Settings currentUser={(currentUser?.user_metadata as any)?.full_name || ''} onLogout={handleLogout} />;
       case 'pomodoro':
         return <PomodoroTimer />;
       case 'study-groups':
@@ -90,11 +96,12 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    // Remove fixed light background so CSS variable based theming can control it.
+    <div className="min-h-screen">
       <Navbar 
         currentView={currentView} 
         onViewChange={setCurrentView} 
-        currentUser={currentUser?.full_name || ''}
+        currentUser={(currentUser?.user_metadata as any)?.full_name || ''}
         onLogout={handleLogout}
       />
       <ToastContainer />

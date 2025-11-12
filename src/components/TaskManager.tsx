@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Calendar, Clock, AlertTriangle } from 'lucide-react';
-import { databaseService, type Task } from '../lib/database';
+import { useState, useEffect } from 'react';
+import { Plus, Search, Calendar, Clock } from 'lucide-react';
+import { type Task } from '../lib/database';
 import { authService } from '../lib/auth';
+import { taskService } from '../lib/taskService';
 
 export function TaskManager() {
   const [showAddModal, setShowAddModal] = useState(false);
@@ -26,7 +27,7 @@ export function TaskManager() {
     try {
       const user = authService.getCurrentUser();
       if (user) {
-        const userTasks = await databaseService.getTasks(user.id);
+        const userTasks = await taskService.getTasks(user.id);
         setTasks(userTasks);
       }
     } catch (error) {
@@ -39,19 +40,25 @@ export function TaskManager() {
   const handleCreateTask = async () => {
     try {
       const user = authService.getCurrentUser();
-      if (!user || !newTask.title.trim()) return;
+      if (!user) {
+        throw new Error('You must be logged in to create tasks');
+      }
+      if (!newTask.title.trim()) {
+        throw new Error('Task title is required');
+      }
 
       const taskData = {
-        title: newTask.title,
-        description: newTask.description,
+        user_id: user.id,
+        title: newTask.title.trim(),
+        description: newTask.description.trim(),
         category: newTask.category,
         priority: newTask.priority,
         due_date: newTask.due_date || null,
-        course_code: newTask.course_code,
+        course_code: newTask.course_code.trim(),
         completed: false
       };
 
-      const createdTask = await databaseService.createTask(user.id, taskData);
+      const createdTask = await taskService.createTask(user.id, taskData);
       setTasks(prev => [createdTask, ...prev]);
       setShowAddModal(false);
   setEditingTaskId(null);
@@ -79,7 +86,9 @@ export function TaskManager() {
         due_date: newTask.due_date || null,
         course_code: newTask.course_code,
       };
-      const updated = await databaseService.updateTask(editingTaskId, updates);
+      const user = authService.getCurrentUser();
+      if (!user) throw new Error('User not authenticated');
+      const updated = await taskService.updateTask(editingTaskId, user.id, updates);
       setTasks(prev => prev.map(t => t.id === editingTaskId ? updated : t));
       setShowAddModal(false);
       setEditingTaskId(null);
@@ -91,7 +100,9 @@ export function TaskManager() {
 
   const toggleTaskComplete = async (taskId: string, completed: boolean) => {
     try {
-      await databaseService.updateTask(taskId, { completed });
+      const user = authService.getCurrentUser();
+      if (!user) throw new Error('User not authenticated');
+      await taskService.updateTask(taskId, user.id, { completed });
       setTasks(prev => prev.map(task => 
         task.id === taskId ? { ...task, completed } : task
       ));
@@ -102,7 +113,9 @@ export function TaskManager() {
 
   const deleteTask = async (taskId: string) => {
     try {
-      await databaseService.deleteTask(taskId);
+      const user = authService.getCurrentUser();
+      if (!user) throw new Error('User not authenticated');
+      await taskService.deleteTask(taskId, user.id);
       setTasks(prev => prev.filter(task => task.id !== taskId));
     } catch (error) {
       console.error('Error deleting task:', error);

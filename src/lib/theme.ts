@@ -35,6 +35,14 @@ export const setTheme = (themeRaw?: string | null) => {
   applyTheme(t);
 };
 
+// Convenience: cycle through themes on each button press.
+export const cycleTheme = (): ThemeMode => {
+  const current = getStoredTheme();
+  const next: ThemeMode = current === 'light' ? 'dark' : current === 'dark' ? 'auto' : 'light';
+  setTheme(next);
+  return next;
+};
+
 export const getStoredTheme = (): ThemeMode => {
   try {
     return normalizeTheme(localStorage.getItem('theme'));

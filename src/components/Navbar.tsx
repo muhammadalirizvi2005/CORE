@@ -1,6 +1,6 @@
 import React from 'react';
-import { Home, CheckSquare, Heart, BarChart3, Settings, LogOut, ChevronDown, Clock, Users, GraduationCap, Brain } from 'lucide-react';
-import { getStoredTheme, ThemeMode } from '../lib/theme';
+import { Home, CheckSquare, Heart, BarChart3, Settings, LogOut, ChevronDown, Clock, Users, GraduationCap, Brain, Moon, Sun, Laptop } from 'lucide-react';
+import { getStoredTheme, ThemeMode, cycleTheme } from '../lib/theme';
 import type { ViewType } from '../App';
 
 interface NavbarProps {
@@ -55,8 +55,19 @@ export function Navbar({ currentView, onViewChange, currentUser, onLogout }: Nav
           <div className="flex items-center space-x-2">
             <Brain className="h-8 w-8 text-green-500" />
             <span className="text-xl font-bold text-blue-600">CORE</span>
+            {/* Theme toggle */}
             <div className="ml-3 flex items-center space-x-2 text-xs">
-              <span className="px-2 py-1 rounded bg-gray-100 text-gray-700">{theme}</span>
+              <button
+                type="button"
+                onClick={() => setTheme(cycleTheme())}
+                className="flex items-center space-x-1 px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                title="Cycle theme: light → dark → auto"
+              >
+                {theme === 'light' && <Sun className="h-4 w-4" />}
+                {theme === 'dark' && <Moon className="h-4 w-4" />}
+                {theme === 'auto' && <Laptop className="h-4 w-4" />}
+                <span className="capitalize">{theme}</span>
+              </button>
               {canvasConnected && <span className="px-2 py-1 rounded bg-green-50 text-green-600">Canvas</span>}
               {calendarConnected && <span className="px-2 py-1 rounded bg-green-50 text-green-600">Calendar</span>}
               {emailConnected && <span className="px-2 py-1 rounded bg-green-50 text-green-600">Email</span>}

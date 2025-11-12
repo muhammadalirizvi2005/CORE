@@ -1,20 +1,19 @@
-import React, { useState } from 'react';
-import { Eye, EyeOff, User, Lock, Brain } from 'lucide-react';
+import { useState } from 'react';
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { authService } from '../lib/auth';
-import type { User as UserType } from '../lib/supabase';
+import type { User } from '@supabase/supabase-js';
 
 interface LoginFormProps {
-  onLogin: (user: UserType) => void;
+  onLogin: (user: User) => void;
 }
 
 export function LoginForm({ onLogin }: LoginFormProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    username: '',
+    email: '',
     password: '',
     confirmPassword: '',
-    email: '',
     fullName: ''
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -23,10 +22,10 @@ export function LoginForm({ onLogin }: LoginFormProps) {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.username.trim()) {
-      newErrors.username = 'Username is required';
-    } else if (formData.username.length < 3) {
-      newErrors.username = 'Username must be at least 3 characters';
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email';
     }
 
     if (!formData.password) {
@@ -38,12 +37,6 @@ export function LoginForm({ onLogin }: LoginFormProps) {
     if (!isLogin) {
       if (!formData.fullName.trim()) {
         newErrors.fullName = 'Full name is required';
-      }
-      
-      if (!formData.email.trim()) {
-        newErrors.email = 'Email is required';
-      } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-        newErrors.email = 'Please enter a valid email';
       }
 
       if (formData.password !== formData.confirmPassword) {
@@ -58,36 +51,29 @@ export function LoginForm({ onLogin }: LoginFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
+    const newErrors = validateForm();
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
 
     setIsLoading(true);
     setErrors({});
     
     try {
       if (isLogin) {
-        const { user, error } = await authService.login({
-          username: formData.username,
+        const user = await authService.login({
+          email: formData.email,
           password: formData.password,
         });
-        
-        if (error || !user) {
-          setErrors({ general: error || 'Login failed' });
-        } else {
-          onLogin(user);
-        }
+        onLogin(user);
       } else {
-        const { user, error } = await authService.register({
-          username: formData.username,
+        const user = await authService.register({
           email: formData.email,
           fullName: formData.fullName,
           password: formData.password,
         });
-        
-        if (error || !user) {
-          setErrors({ general: error || 'Registration failed' });
-        } else {
-          onLogin(user);
-        }
+        onLogin(user);
       }
     } catch (error) {
       setErrors({ general: 'An unexpected error occurred' });
@@ -109,7 +95,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
         {/* Logo and Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <Brain className="h-10 w-10 text-green-500" />
+            <Mail className="h-10 w-10 text-green-500" />
             <span className="text-2xl font-bold text-blue-600">CORE</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
@@ -140,7 +126,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                   Full Name
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <input
                     type="text"
                     value={formData.fullName}
@@ -187,7 +173,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                 <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
                   type="text"
-                  value={formData.username}
+                  value={formData.email}
                   onChange={(e) => handleInputChange('username', e.target.value)}
                   className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     errors.username ? 'border-red-300' : 'border-gray-300'
@@ -279,7 +265,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                   setIsLogin(!isLogin);
                   setErrors({});
                   setFormData({
-                    username: '',
+                    email: '',
                     password: '',
                     confirmPassword: '',
                     email: '',
