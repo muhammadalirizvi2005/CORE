@@ -19,41 +19,42 @@ export function LoginForm({ onLogin }: LoginFormProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
 
-  const validateForm = () => {
+  const validateForm = (): Record<string, string> => {
     const newErrors: Record<string, string> = {};
 
+    // Email (always required)
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email';
     }
 
+    // Password
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
     }
 
+    // Registration-only checks
     if (!isLogin) {
       if (!formData.fullName.trim()) {
         newErrors.fullName = 'Full name is required';
       }
-
       if (formData.password !== formData.confirmPassword) {
         newErrors.confirmPassword = 'Passwords do not match';
       }
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const newErrors = validateForm();
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+    const validationErrors = validateForm();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
       return;
     }
 
@@ -143,46 +144,23 @@ export function LoginForm({ onLogin }: LoginFormProps) {
               </div>
             )}
 
-            {/* Email (Register only) */}
-            {!isLogin && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.email ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter your email"
-                />
-                {errors.email && (
-                  <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-                )}
-              </div>
-            )}
-
-            {/* Username */}
+            {/* Email (Always) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Username
+                Email Address
               </label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  type="text"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('username', e.target.value)}
-                  className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.username ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter your username"
-                />
-              </div>
-              {errors.username && (
-                <p className="mt-1 text-sm text-red-600">{errors.username}</p>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  errors.email ? 'border-red-300' : 'border-gray-300'
+                }`}
+                placeholder="Enter your email"
+                autoComplete="email"
+              />
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
               )}
             </div>
 
@@ -268,7 +246,6 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                     email: '',
                     password: '',
                     confirmPassword: '',
-                    email: '',
                     fullName: ''
                   });
                 }}

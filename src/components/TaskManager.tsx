@@ -46,9 +46,14 @@ export function TaskManager() {
       if (!newTask.title.trim()) {
         throw new Error('Task title is required');
       }
+      if (newTask.title.length > 150) {
+        throw new Error('Title too long (max 150 chars)');
+      }
+      if (newTask.description.length > 1000) {
+        throw new Error('Description too long (max 1000 chars)');
+      }
 
       const taskData = {
-        user_id: user.id,
         title: newTask.title.trim(),
         description: newTask.description.trim(),
         category: newTask.category,
@@ -56,7 +61,7 @@ export function TaskManager() {
         due_date: newTask.due_date || null,
         course_code: newTask.course_code.trim(),
         completed: false
-      };
+      } as any;
 
       const createdTask = await taskService.createTask(user.id, taskData);
       setTasks(prev => [createdTask, ...prev]);
@@ -72,6 +77,7 @@ export function TaskManager() {
       });
     } catch (error) {
       console.error('Error creating task:', error);
+      window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: error instanceof Error ? error.message : 'Failed to create task', type: 'error' } }));
     }
   };
 
@@ -95,6 +101,7 @@ export function TaskManager() {
       setNewTask({ title: '', description: '', category: 'class', priority: 'medium', due_date: '', course_code: '' });
     } catch (error) {
       console.error('Error updating task:', error);
+      window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: 'Failed to update task', type: 'error' } }));
     }
   };
 
@@ -108,6 +115,7 @@ export function TaskManager() {
       ));
     } catch (error) {
       console.error('Error updating task:', error);
+      window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: 'Failed to toggle task', type: 'error' } }));
     }
   };
 
@@ -119,6 +127,7 @@ export function TaskManager() {
       setTasks(prev => prev.filter(task => task.id !== taskId));
     } catch (error) {
       console.error('Error deleting task:', error);
+      window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: 'Failed to delete task', type: 'error' } }));
     }
   };
 
