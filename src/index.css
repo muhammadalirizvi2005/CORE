@@ -26,8 +26,14 @@ html, body, #root {
 	background-color: #0f1724 !important;
 }
 .dark .text-gray-900 {
-	color: #e6eef8 !important;
+	color: #f9fafb !important; /* Nearly white for high contrast headers */
+}
+.dark .text-gray-800 {
+	color: #f3f4f6 !important; /* Very light gray for subheadings */
 }
 .dark .text-gray-600 {
 	color: #9aa6b8 !important;
+}
+.dark .text-gray-500 {
+	color: #8893a4 !important;
 }

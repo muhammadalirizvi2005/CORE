@@ -47,5 +47,29 @@ export const authService = {
       }
       callback(session?.user ?? readCachedUser());
     });
+  },
+  // Persist integration/linking flags and metadata to users table
+  async updateUserConnections(userId: string, updates: Partial<{ canvas_base_url: string | null; canvas_connected: boolean; calendar_url: string | null; calendar_connected: boolean; email_web_url: string | null; }>): Promise<void> {
+    const { error } = await supabase
+      .from('users')
+      .update(updates)
+      .eq('id', userId);
+    if (error) throw error;
+  },
+  // Fetch integration/linking flags and metadata from users table
+  async fetchUserConnections(userId: string): Promise<{ canvas_base_url: string | null; canvas_connected: boolean; calendar_url: string | null; calendar_connected: boolean; email_web_url: string | null; }> {
+    const { data, error } = await supabase
+      .from('users')
+      .select('canvas_base_url, canvas_connected, calendar_url, calendar_connected, email_web_url')
+      .eq('id', userId)
+      .single();
+    if (error) throw error;
+    return {
+      canvas_base_url: (data as any)?.canvas_base_url ?? null,
+      canvas_connected: Boolean((data as any)?.canvas_connected),
+      calendar_url: (data as any)?.calendar_url ?? null,
+      calendar_connected: Boolean((data as any)?.calendar_connected),
+      email_web_url: (data as any)?.email_web_url ?? null,
+    };
   }
 };

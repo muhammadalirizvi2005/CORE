@@ -96,6 +96,8 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
   const [canvasBaseUrl, setCanvasBaseUrl] = React.useState<string | null>(null);
   const [calendarUrl, setCalendarUrl] = React.useState<string | null>(null);
   const [emailWebUrlState, setEmailWebUrlState] = React.useState<string | null>(null);
+  const [canvasConnected, setCanvasConnected] = React.useState<boolean>(false);
+  const [calendarConnected, setCalendarConnected] = React.useState<boolean>(false);
 
   const handleCanvasSubmit = (input: string) => {
     if (!input) return closeModal();
@@ -269,13 +271,57 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
       graduationYear: savedGrad || prev.graduationYear,
     }));
 
-    // Load persisted connections
+    // Load persisted connections (local)
     const savedCanvas = localStorage.getItem('canvasBaseUrl');
     const savedCalendar = localStorage.getItem('calendarUrl');
     const savedEmailWeb = localStorage.getItem('emailWebUrl');
     setCanvasBaseUrl(savedCanvas && (savedCanvas.startsWith('http') ? savedCanvas : null));
     setCalendarUrl(savedCalendar && (savedCalendar.startsWith('http') ? savedCalendar : null));
     setEmailWebUrlState(savedEmailWeb && (savedEmailWeb.startsWith('http') ? savedEmailWeb : null));
+
+    // If logged in, hydrate from server so users don't need to relink
+    const u = authService.getCurrentUser();
+    if (u) {
+      authService.fetchUserConnections(u.id)
+        .then((conns) => {
+          // Update local state and localStorage to keep Navbar and other components in sync
+          setCanvasConnected(Boolean(conns.canvas_connected));
+          setCalendarConnected(Boolean(conns.calendar_connected));
+          if (conns.canvas_base_url) {
+            localStorage.setItem('canvasBaseUrl', conns.canvas_base_url);
+            setCanvasBaseUrl(conns.canvas_base_url);
+          }
+          if (conns.calendar_url) {
+            localStorage.setItem('calendarUrl', conns.calendar_url);
+            setCalendarUrl(conns.calendar_url);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to fetch user connections:', err);
+        });
+    }
+
+    // Handle OAuth callback query flags, show toast and refresh connections
+    const params = new URLSearchParams(window.location.search);
+    const oauthResult = params.get('oauth');
+    if (oauthResult === 'google_success' || oauthResult === 'canvas_success') {
+      dispatchToast(`${oauthResult.startsWith('canvas') ? 'Canvas' : 'Google Calendar'} connected`, 'success');
+      if (u) {
+        authService.fetchUserConnections(u.id)
+          .then((conns) => {
+            setCanvasConnected(Boolean(conns.canvas_connected));
+            setCalendarConnected(Boolean(conns.calendar_connected));
+            if (conns.canvas_base_url) {
+              localStorage.setItem('canvasBaseUrl', conns.canvas_base_url);
+              setCanvasBaseUrl(conns.canvas_base_url);
+            }
+          })
+          .catch(() => {});
+      }
+      // Clean up the query param
+      const newUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
   }, []);
 
   // Render modal component and pass handlers
@@ -420,7 +466,7 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
                   <h3 className="font-medium text-gray-900">Google Calendar</h3>
                   <p className="text-sm text-gray-600">Sync tasks and deadlines with your Google Calendar</p>
                 </div>
-                {getCalendarUrl() ? (
+                {calendarConnected || getCalendarUrl() ? (
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-green-600">Connected</span>
                     <button
@@ -453,7 +499,7 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
                   <h3 className="font-medium text-gray-900">Canvas LMS</h3>
                   <p className="text-sm text-gray-600">Import assignments and due dates automatically</p>
                 </div>
-                {getCanvasBaseUrl() ? (
+                {canvasConnected || getCanvasBaseUrl() ? (
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-green-600">Connected</span>
                     <button

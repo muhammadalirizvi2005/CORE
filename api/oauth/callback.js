@@ -73,7 +73,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: tokenData.error });
     }
     
-    // Store in Supabase
+    // Store in Supabase (tokens)
     const supabaseResponse = await fetch(`${SUPABASE_URL}/rest/v1/user_oauth_tokens`, {
       method: 'POST',
       headers: {
@@ -98,6 +98,33 @@ export default async function handler(req, res) {
       throw new Error('Failed to store tokens');
     }
     
+    // Also mark the user's connection flags so client can reflect linked status without relinking
+    try {
+      const userUpdates = {};
+      if (provider === 'google') {
+        userUpdates['calendar_connected'] = true;
+      } else if (provider === 'canvas') {
+        userUpdates['canvas_connected'] = true;
+        if (canvas_base) userUpdates['canvas_base_url'] = canvas_base;
+      }
+      if (Object.keys(userUpdates).length > 0) {
+        const usersUrl = `${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(state)}`;
+        await fetch(usersUrl, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+            'apikey': SUPABASE_SERVICE_ROLE_KEY,
+            'Prefer': 'resolution=merge-duplicates'
+          },
+          body: JSON.stringify(userUpdates),
+        });
+      }
+    } catch (e) {
+      console.error('Failed to update user connection flags:', e);
+      // non-fatal; continue redirect
+    }
+
     // Redirect back to app with success indicator
     const redirectUrl = `${APP_URL}?oauth=${provider}_success`;
     res.redirect(302, redirectUrl);
