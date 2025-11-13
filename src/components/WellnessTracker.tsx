@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { Heart, Brain, Coffee, Moon, Activity, TrendingUp } from 'lucide-react';
 import { databaseService, type WellnessEntry } from '../lib/database';
 import { authService } from '../lib/auth';
+import { supabase } from '../lib/supabase';
 
 export function WellnessTracker() {
   const [selectedMood, setSelectedMood] = useState<string>('');
@@ -42,11 +43,23 @@ export function WellnessTracker() {
   };
 
   const saveWellnessEntry = async () => {
-    if (!selectedMood) return;
+    if (!selectedMood) {
+      alert('Please select a mood first');
+      return;
+    }
     
     try {
-      const user = authService.getCurrentUser();
-      if (!user) return;
+      console.log('🔵 Starting wellness entry creation...');
+      
+      // Get fresh user session from Supabase
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      console.log('🔵 User data:', user);
+      console.log('🔵 Auth error:', authError);
+      
+      if (!user) {
+        alert('You must be logged in to save wellness entries. Please sign in again.');
+        throw new Error('You must be logged in');
+      }
 
       const entryData = {
         mood: selectedMood as WellnessEntry['mood'],
@@ -55,11 +68,22 @@ export function WellnessTracker() {
         entry_date: new Date().toISOString().split('T')[0]
       };
 
+      console.log('🔵 Wellness entry data to create:', entryData);
+      console.log('🔵 User ID:', user.id);
+
       const newEntry = await databaseService.createWellnessEntry(user.id, entryData);
+      console.log('🔵 Wellness entry created successfully:', newEntry);
+      
       setTodayEntry(newEntry);
       setRecentEntries(prev => [newEntry, ...prev.slice(0, 6)]);
+      
+      alert('Wellness entry saved successfully!');
+      window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: 'Wellness entry saved successfully', type: 'success' } }));
     } catch (error) {
-      console.error('Error saving wellness entry:', error);
+      console.error('🔴 Error saving wellness entry:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save wellness entry';
+      alert(`ERROR: ${errorMessage}\n\nCheck console for details.`);
+      window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: errorMessage, type: 'error' } }));
     }
   };
 

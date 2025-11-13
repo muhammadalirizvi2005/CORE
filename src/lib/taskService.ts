@@ -3,22 +3,32 @@ import type { Task } from './database';
 
 export const taskService = {
   async createTask(userId: string, taskData: Omit<Task, 'id' | 'user_id' | 'created_at' | 'updated_at'>) {
+    console.log('🟢 taskService.createTask called with:', { userId, taskData });
+    
+    const insertData = {
+      ...taskData,
+      user_id: userId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    console.log('🟢 Data to insert:', insertData);
+    
     const { data, error } = await supabase
       .from('tasks')
-      .insert([{
-        ...taskData,
-        user_id: userId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }])
+      .insert([insertData])
       .select('*')
       .single();
 
+    console.log('🟢 Supabase response:', { data, error });
+
     if (error) {
-      console.error('Error creating task:', error);
+      console.error('🔴 Supabase error creating task:', error);
+      console.error('🔴 Error details:', JSON.stringify(error, null, 2));
       throw error;
     }
 
+    console.log('🟢 Task created successfully:', data);
     return data;
   },
 

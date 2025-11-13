@@ -37,3 +37,15 @@ html, body, #root {
 .dark .text-gray-500 {
 	color: #8893a4 !important;
 }
+
+/* Form controls: make typed text darker in dark mode for better legibility as requested */
+.dark input,
+.dark textarea,
+.dark select {
+	color: #111827 !important; /* gray-900 */
+	caret-color: #111827;
+}
+.dark input::placeholder,
+.dark textarea::placeholder {
+	color: #374151 !important; /* gray-700 for stronger placeholder contrast */
+}

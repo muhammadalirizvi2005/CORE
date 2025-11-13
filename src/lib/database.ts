@@ -147,13 +147,26 @@ export const databaseService = {
   },
 
   async createCourse(userId: string, course: Omit<Course, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<Course> {
+    console.log('🟢 databaseService.createCourse called with:', { userId, course });
+    
+    const insertData = { ...course, user_id: userId };
+    console.log('🟢 Data to insert:', insertData);
+    
     const { data, error } = await supabase
       .from('courses')
-      .insert([{ ...course, user_id: userId }])
+      .insert([insertData])
       .select()
       .single();
 
+    console.log('🟢 Supabase response:', { data, error });
+    
+    if (error) {
+      console.error('🔴 Supabase error creating course:', error);
+      console.error('🔴 Error details:', JSON.stringify(error, null, 2));
+    }
+
     this._logAndThrow('createCourse', error);
+    console.log('🟢 Course created successfully:', data);
     return data;
   },
 
@@ -187,13 +200,26 @@ export const databaseService = {
   },
 
   async createAssignment(userId: string, assignment: Omit<Assignment, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<Assignment> {
+    console.log('🟢 databaseService.createAssignment called with:', { userId, assignment });
+    
+    const insertData = { ...assignment, user_id: userId };
+    console.log('🟢 Data to insert:', insertData);
+    
     const { data, error } = await supabase
       .from('assignments')
-      .insert([{ ...assignment, user_id: userId }])
+      .insert([insertData])
       .select()
       .single();
 
+    console.log('🟢 Supabase response:', { data, error });
+    
+    if (error) {
+      console.error('🔴 Supabase error creating assignment:', error);
+      console.error('🔴 Error details:', JSON.stringify(error, null, 2));
+    }
+
     this._logAndThrow('createAssignment', error);
+    console.log('🟢 Assignment created successfully:', data);
     return data;
   },
 
@@ -211,13 +237,26 @@ export const databaseService = {
   },
 
   async createWellnessEntry(userId: string, entry: Omit<WellnessEntry, 'id' | 'user_id' | 'created_at'>): Promise<WellnessEntry> {
+    console.log('🟢 databaseService.createWellnessEntry called with:', { userId, entry });
+    
+    const insertData = { ...entry, user_id: userId };
+    console.log('🟢 Data to insert:', insertData);
+    
     const { data, error } = await supabase
       .from('wellness_entries')
-      .insert([{ ...entry, user_id: userId }])
+      .insert([insertData])
       .select()
       .single();
 
+    console.log('🟢 Supabase response:', { data, error });
+    
+    if (error) {
+      console.error('🔴 Supabase error creating wellness entry:', error);
+      console.error('🔴 Error details:', JSON.stringify(error, null, 2));
+    }
+
     this._logAndThrow('createWellnessEntry', error);
+    console.log('🟢 Wellness entry created successfully:', data);
     return data;
   },
 

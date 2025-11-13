@@ -3,6 +3,7 @@ import { Plus, Search, Calendar, Clock } from 'lucide-react';
 import { type Task } from '../lib/database';
 import { authService } from '../lib/auth';
 import { taskService } from '../lib/taskService';
+import { supabase } from '../lib/supabase';
 
 export function TaskManager() {
   const [showAddModal, setShowAddModal] = useState(false);
@@ -10,6 +11,7 @@ export function TaskManager() {
   const [filter, setFilter] = useState<'all' | 'class' | 'work' | 'extracurricular' | 'personal'>('all');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
@@ -39,17 +41,29 @@ export function TaskManager() {
 
   const handleCreateTask = async () => {
     try {
-      const user = authService.getCurrentUser();
+      setSaving(true);
+      console.log('🔵 Starting task creation...');
+      
+      // Get fresh user session from Supabase
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      console.log('🔵 User data:', user);
+      console.log('🔵 Auth error:', authError);
+      
       if (!user) {
+        alert('You must be logged in to create tasks. Please sign in again.');
         throw new Error('You must be logged in to create tasks');
       }
+      
       if (!newTask.title.trim()) {
+        alert('Task title is required');
         throw new Error('Task title is required');
       }
       if (newTask.title.length > 150) {
+        alert('Title too long (max 150 chars)');
         throw new Error('Title too long (max 150 chars)');
       }
       if (newTask.description.length > 1000) {
+        alert('Description too long (max 1000 chars)');
         throw new Error('Description too long (max 1000 chars)');
       }
 
@@ -63,10 +77,15 @@ export function TaskManager() {
         completed: false
       } as any;
 
+      console.log('🔵 Task data to create:', taskData);
+      console.log('🔵 User ID:', user.id);
+
       const createdTask = await taskService.createTask(user.id, taskData);
+      console.log('🔵 Task created successfully:', createdTask);
+      
       setTasks(prev => [createdTask, ...prev]);
       setShowAddModal(false);
-  setEditingTaskId(null);
+      setEditingTaskId(null);
       setNewTask({
         title: '',
         description: '',
@@ -75,9 +94,15 @@ export function TaskManager() {
         due_date: '',
         course_code: ''
       });
+      alert('Task created successfully!');
+      window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: 'Task created successfully', type: 'success' } }));
     } catch (error) {
-      console.error('Error creating task:', error);
-      window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: error instanceof Error ? error.message : 'Failed to create task', type: 'error' } }));
+      console.error('🔴 Error creating task:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create task';
+      alert(`ERROR: ${errorMessage}\n\nCheck console for details.`);
+      window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: errorMessage, type: 'error' } }));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -163,7 +188,17 @@ export function TaskManager() {
         
         <div className="mt-4 sm:mt-0">
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => {
+              const user = authService.getCurrentUser();
+              if (!user) {
+                window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: 'Please sign in to add tasks', type: 'error' } }));
+                try {
+                  window.dispatchEvent(new CustomEvent('navigate', { detail: { view: 'login' } }));
+                } catch {}
+                return;
+              }
+              setShowAddModal(true);
+            }}
             className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center space-x-2 shadow-sm"
           >
             <Plus className="h-5 w-5" />
@@ -376,9 +411,10 @@ export function TaskManager() {
               </button>
               <button
                 onClick={editingTaskId ? handleUpdateTask : handleCreateTask}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                disabled={saving || !newTask.title.trim() || newTask.title.length > 150 || newTask.description.length > 1000}
+                className={`flex-1 px-4 py-2 rounded-lg ${saving || !newTask.title.trim() || newTask.title.length > 150 || newTask.description.length > 1000 ? 'bg-blue-400 cursor-not-allowed text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
               >
-                {editingTaskId ? 'Update Task' : 'Add Task'}
+                {saving ? 'Saving...' : editingTaskId ? 'Update Task' : 'Add Task'}
               </button>
             </div>
           </div>

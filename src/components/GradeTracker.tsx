@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen, TrendingUp, Target, Award, Plus, CreditCard as Edit, Trash2 } from 'lucide-react';
 import { databaseService, type Course, type Assignment } from '../lib/database';
 import { authService } from '../lib/auth';
+import { supabase } from '../lib/supabase';
 
 export function GradeTracker() {
   const [showAddCourse, setShowAddCourse] = useState(false);
@@ -42,8 +43,27 @@ export function GradeTracker() {
 
   const handleCreateCourse = async () => {
     try {
-      const user = authService.getCurrentUser();
-      if (!user || !newCourse.name.trim() || !newCourse.code.trim()) return;
+      console.log('🔵 Starting course creation...');
+      
+      // Get fresh user session from Supabase
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      console.log('🔵 User data:', user);
+      console.log('🔵 Auth error:', authError);
+      
+      if (!user) {
+        alert('You must be logged in to create courses. Please sign in again.');
+        throw new Error('You must be logged in');
+      }
+      
+      if (!newCourse.name.trim()) {
+        alert('Course name is required');
+        return;
+      }
+      
+      if (!newCourse.code.trim()) {
+        alert('Course code is required');
+        return;
+      }
 
       const courseData = {
         name: newCourse.name,
@@ -54,7 +74,12 @@ export function GradeTracker() {
         color: newCourse.color
       };
 
+      console.log('🔵 Course data to create:', courseData);
+      console.log('🔵 User ID:', user.id);
+
       const createdCourse = await databaseService.createCourse(user.id, courseData);
+      console.log('🔵 Course created successfully:', createdCourse);
+      
       setCourses(prev => [...prev, createdCourse]);
       setShowAddCourse(false);
       setNewCourse({
@@ -64,8 +89,13 @@ export function GradeTracker() {
         target_grade: 90,
         color: 'bg-blue-500'
       });
+      alert('Course created successfully!');
+      window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: 'Course created successfully', type: 'success' } }));
     } catch (error) {
-      console.error('Error creating course:', error);
+      console.error('🔴 Error creating course:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create course';
+      alert(`ERROR: ${errorMessage}\n\nCheck console for details.`);
+      window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: errorMessage, type: 'error' } }));
     }
   };
 
