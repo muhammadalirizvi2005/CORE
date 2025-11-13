@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, CheckSquare, Flame, BarChart3, Users, Timer, BookOpen, Settings, Brain } from 'lucide-react';
+import { Calendar, CheckSquare, Flame, BarChart3, Timer, BookOpen, Settings, Brain } from 'lucide-react';
 import { authService } from '../lib/auth';
 import { databaseService } from '../lib/database';
 
@@ -55,7 +55,6 @@ export function Dashboard() {
     { icon: Timer, label: 'Start Pomodoro', color: 'bg-red-500', view: 'pomodoro' },
     { icon: Brain, label: 'Wellness Check', color: 'bg-green-500', view: 'wellness' },
     { icon: BookOpen, label: 'Add Grade', color: 'bg-purple-500', view: 'grades' },
-    { icon: Users, label: 'Study Groups', color: 'bg-orange-500', view: 'study-groups' },
     { icon: BarChart3, label: 'View Analytics', color: 'bg-indigo-500', view: 'analytics' }
   ];
 
