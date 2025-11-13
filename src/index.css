@@ -26,7 +26,7 @@ html, body, #root {
 	background-color: #0f1724 !important;
 }
 .dark .text-gray-900, .dark h1, .dark h2, .dark h3 {
-	color: #111827 !important; /* User request: keep headers dark even in dark mode */
+	color: #22c55e !important; /* Match CORE logo green (Tailwind green-500) in dark mode */
 }
 .dark .text-gray-800 {
 	color: #1f2937 !important; /* Slightly lighter than header for hierarchy */
