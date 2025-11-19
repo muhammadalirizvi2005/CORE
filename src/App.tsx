@@ -11,6 +11,7 @@ import { PomodoroTimer } from './components/PomodoroTimer';
 import { GradeTracker } from './components/GradeTracker';
 import { Navbar } from './components/Navbar';
 import { ToastContainer } from './components/Toast';
+import { AIChatbot } from './components/AIChatbot';
 import { authService } from './lib/auth';
 import type { User } from '@supabase/supabase-js';
 
@@ -102,6 +103,7 @@ function App() {
         onLogout={handleLogout}
       />
       <ToastContainer />
+      <AIChatbot />
       <main className="pt-16">
         {renderCurrentView()}
       </main>
