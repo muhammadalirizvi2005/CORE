@@ -7,7 +7,6 @@ import { supabase } from '../lib/supabase';
 export function WellnessTracker() {
   const [selectedMood, setSelectedMood] = useState<string>('');
   const [stressLevel, setStressLevel] = useState<number>(3);
-  const [notes, setNotes] = useState<string>('');
   const [todayEntry, setTodayEntry] = useState<WellnessEntry | null>(null);
   const [recentEntries, setRecentEntries] = useState<WellnessEntry[]>([]);
   const [saving, setSaving] = useState(false);
@@ -31,7 +30,6 @@ export function WellnessTracker() {
         if (todayData) {
           setSelectedMood(todayData.mood);
           setStressLevel(todayData.stress_level);
-          setNotes(todayData.notes);
         }
       }
     } catch (error) {
@@ -62,7 +60,7 @@ export function WellnessTracker() {
       const entryData = {
         mood: selectedMood as WellnessEntry['mood'],
         stress_level: stressLevel,
-        notes: notes.trim(),
+        notes: '',
         entry_date: new Date().toISOString().split('T')[0]
       };
 
@@ -80,7 +78,7 @@ export function WellnessTracker() {
           .update({
             mood: entryData.mood,
             stress_level: entryData.stress_level,
-            notes: entryData.notes
+            notes: ''
           })
           .eq('id', todayEntry.id)
           .eq('user_id', user.id)
@@ -222,17 +220,6 @@ export function WellnessTracker() {
                 </p>
               </div>
             )}
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Notes (optional)</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                rows={3}
-                placeholder="How are you feeling today? Any thoughts to share?"
-              />
-            </div>
             
             <button
               onClick={saveWellnessEntry}

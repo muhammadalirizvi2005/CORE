@@ -526,44 +526,6 @@ export function Analytics() {
                   })()}
                 </p>
               </div>
-
-              {/* Recent Notes */}
-              <div className="md:col-span-2 lg:col-span-3 bg-gradient-to-br from-yellow-50 to-yellow-100 p-5 rounded-xl">
-                <h3 className="font-semibold text-yellow-900 mb-4">Recent Wellness Notes</h3>
-                <div className="space-y-3 max-h-60 overflow-y-auto">
-                  {wellnessEntries
-                    .filter(entry => entry.notes && entry.notes.trim())
-                    .slice(0, 5)
-                    .map((entry, index) => (
-                      <div key={index} className="bg-white p-3 rounded-lg shadow-sm">
-                        <div className="flex items-start justify-between mb-1">
-                          <span className="text-xs font-medium text-gray-500">
-                            {new Date(entry.entry_date).toLocaleDateString('en-US', { 
-                              month: 'short', 
-                              day: 'numeric',
-                              year: 'numeric'
-                            })}
-                          </span>
-                          <span className="text-sm">
-                            {(() => {
-                              const moodEmojis = { great: '😊', good: '🙂', okay: '😐', stressed: '😟', overwhelmed: '😫' };
-                              return moodEmojis[entry.mood as keyof typeof moodEmojis] || '😐';
-                            })()}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-700 leading-relaxed">{entry.notes}</p>
-                        <div className="mt-2 text-xs text-gray-500">
-                          Stress: {entry.stress_level}/10
-                        </div>
-                      </div>
-                    ))}
-                  {wellnessEntries.filter(entry => entry.notes && entry.notes.trim()).length === 0 && (
-                    <p className="text-sm text-yellow-800 text-center py-4">
-                      No notes yet. Add notes to your wellness check-ins to see them here!
-                    </p>
-                  )}
-                </div>
-              </div>
             </div>
           )}
         </div>
