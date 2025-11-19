@@ -50,21 +50,26 @@ export function TaskManager() {
       console.log('🔵 Auth error:', authError);
       
       if (!user) {
-        alert('You must be logged in to create tasks. Please sign in again.');
-        throw new Error('You must be logged in to create tasks');
+        const errorMsg = 'You must be logged in to create tasks. Please sign in again.';
+        console.error('🔴', errorMsg);
+        window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: errorMsg, type: 'error' } }));
+        throw new Error(errorMsg);
       }
       
       if (!newTask.title.trim()) {
-        alert('Task title is required');
-        throw new Error('Task title is required');
+        const errorMsg = 'Task title is required';
+        window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: errorMsg, type: 'error' } }));
+        throw new Error(errorMsg);
       }
       if (newTask.title.length > 150) {
-        alert('Title too long (max 150 chars)');
-        throw new Error('Title too long (max 150 chars)');
+        const errorMsg = 'Title too long (max 150 chars)';
+        window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: errorMsg, type: 'error' } }));
+        throw new Error(errorMsg);
       }
       if (newTask.description.length > 1000) {
-        alert('Description too long (max 1000 chars)');
-        throw new Error('Description too long (max 1000 chars)');
+        const errorMsg = 'Description too long (max 1000 chars)';
+        window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: errorMsg, type: 'error' } }));
+        throw new Error(errorMsg);
       }
 
       const taskData = {
@@ -94,13 +99,20 @@ export function TaskManager() {
         due_date: '',
         course_code: ''
       });
-      alert('Task created successfully!');
-      window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: 'Task created successfully', type: 'success' } }));
-    } catch (error) {
+      window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: 'Task created successfully!', type: 'success' } }));
+    } catch (error: any) {
       console.error('🔴 Error creating task:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create task';
-      alert(`ERROR: ${errorMessage}\n\nCheck console for details.`);
-      window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: errorMessage, type: 'error' } }));
+      
+      // Check if it's a 403 RLS policy error
+      if (error?.code === '42501' || error?.message?.includes('policy') || error?.message?.includes('permission')) {
+        const errorMsg = 'Database permission error. Please run the RLS migration in Supabase Dashboard.';
+        console.error('🔴 RLS POLICY ERROR - You need to apply the migration!');
+        console.error('🔴 Go to: https://supabase.com/dashboard and run the SQL from FIX_403_ERROR.md');
+        window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: errorMsg, type: 'error' } }));
+      } else {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to create task';
+        window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: errorMessage, type: 'error' } }));
+      }
     } finally {
       setSaving(false);
     }

@@ -10,6 +10,7 @@ export function WellnessTracker() {
   const [notes, setNotes] = useState<string>('');
   const [todayEntry, setTodayEntry] = useState<WellnessEntry | null>(null);
   const [recentEntries, setRecentEntries] = useState<WellnessEntry[]>([]);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadWellnessData();
@@ -40,12 +41,13 @@ export function WellnessTracker() {
 
   const saveWellnessEntry = async () => {
     if (!selectedMood) {
-      alert('Please select a mood first');
+      window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: 'Please select a mood first', type: 'error' } }));
       return;
     }
     
     try {
-      console.log('🔵 Starting wellness entry creation...');
+      setSaving(true);
+      console.log('🔵 Starting wellness entry save...');
       
       // Get fresh user session from Supabase
       const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -53,33 +55,74 @@ export function WellnessTracker() {
       console.log('🔵 Auth error:', authError);
       
       if (!user) {
-        alert('You must be logged in to save wellness entries. Please sign in again.');
+        window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: 'You must be logged in to save wellness entries', type: 'error' } }));
         throw new Error('You must be logged in');
       }
 
       const entryData = {
         mood: selectedMood as WellnessEntry['mood'],
         stress_level: stressLevel,
-        notes: notes,
+        notes: notes.trim(),
         entry_date: new Date().toISOString().split('T')[0]
       };
 
-      console.log('🔵 Wellness entry data to create:', entryData);
+      console.log('🔵 Wellness entry data:', entryData);
       console.log('🔵 User ID:', user.id);
+      console.log('🔵 Today entry exists?', todayEntry);
 
-      const newEntry = await databaseService.createWellnessEntry(user.id, entryData);
-      console.log('🔵 Wellness entry created successfully:', newEntry);
+      let savedEntry: WellnessEntry;
+
+      if (todayEntry) {
+        // Update existing entry
+        console.log('🔵 Updating existing entry:', todayEntry.id);
+        const { data, error } = await supabase
+          .from('wellness_entries')
+          .update({
+            mood: entryData.mood,
+            stress_level: entryData.stress_level,
+            notes: entryData.notes
+          })
+          .eq('id', todayEntry.id)
+          .eq('user_id', user.id)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('🔴 Error updating wellness entry:', error);
+          throw error;
+        }
+        savedEntry = data;
+        console.log('🔵 Entry updated successfully:', savedEntry);
+      } else {
+        // Create new entry
+        console.log('🔵 Creating new entry');
+        savedEntry = await databaseService.createWellnessEntry(user.id, entryData);
+        console.log('🔵 Entry created successfully:', savedEntry);
+      }
       
-      setTodayEntry(newEntry);
-      setRecentEntries(prev => [newEntry, ...prev.slice(0, 6)]);
+      setTodayEntry(savedEntry);
       
-      alert('Wellness entry saved successfully!');
-      window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: 'Wellness entry saved successfully', type: 'success' } }));
+      // Update recent entries list
+      setRecentEntries(prev => {
+        const filtered = prev.filter(e => e.id !== savedEntry.id);
+        return [savedEntry, ...filtered].slice(0, 7);
+      });
+      
+      window.dispatchEvent(new CustomEvent('app-toast', { 
+        detail: { 
+          message: todayEntry ? 'Wellness entry updated!' : 'Wellness entry saved!', 
+          type: 'success' 
+        } 
+      }));
+      
+      // Trigger analytics refresh
+      window.dispatchEvent(new CustomEvent('wellness-updated'));
     } catch (error) {
       console.error('🔴 Error saving wellness entry:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to save wellness entry';
-      alert(`ERROR: ${errorMessage}\n\nCheck console for details.`);
       window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: errorMessage, type: 'error' } }));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -193,10 +236,10 @@ export function WellnessTracker() {
             
             <button
               onClick={saveWellnessEntry}
-              disabled={!selectedMood}
+              disabled={!selectedMood || saving}
               className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {todayEntry ? 'Update Today\'s Entry' : 'Save Today\'s Entry'}
+              {saving ? 'Saving...' : todayEntry ? 'Update Today\'s Entry' : 'Save Today\'s Entry'}
             </button>
           </div>
 

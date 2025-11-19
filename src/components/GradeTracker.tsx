@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, TrendingUp, Target, Award, Plus, CreditCard as Edit } from 'lucide-react';
+import { BookOpen, TrendingUp, Target, Award, Plus, CreditCard as Edit, RefreshCw } from 'lucide-react';
 import { databaseService, type Course, type Assignment } from '../lib/database';
 import { authService } from '../lib/auth';
 import { supabase } from '../lib/supabase';
+import { canvasService } from '../lib/canvasService';
 
 export function GradeTracker() {
   const [showAddCourse, setShowAddCourse] = useState(false);
@@ -10,6 +11,8 @@ export function GradeTracker() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [canvasConnected, setCanvasConnected] = useState(false);
   const [newCourse, setNewCourse] = useState({
     name: '',
     code: '',
@@ -20,7 +23,16 @@ export function GradeTracker() {
 
   useEffect(() => {
     loadData();
+    checkCanvasConnection();
   }, []);
+
+  const checkCanvasConnection = async () => {
+    const user = authService.getCurrentUser();
+    if (user) {
+      const connected = await canvasService.isConnected(user.id);
+      setCanvasConnected(connected);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -37,6 +49,47 @@ export function GradeTracker() {
       console.error('Error loading grade data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const syncCanvasGrades = async () => {
+    const user = authService.getCurrentUser();
+    if (!user) {
+      window.dispatchEvent(new CustomEvent('app-toast', { 
+        detail: { message: 'Please log in to sync Canvas grades', type: 'error' } 
+      }));
+      return;
+    }
+
+    const connected = await canvasService.isConnected(user.id);
+    if (!connected) {
+      window.dispatchEvent(new CustomEvent('app-toast', { 
+        detail: { message: 'Please connect Canvas in Settings first', type: 'error' } 
+      }));
+      return;
+    }
+
+    try {
+      setSyncing(true);
+      window.dispatchEvent(new CustomEvent('app-toast', { 
+        detail: { message: 'Syncing grades from Canvas...', type: 'info' } 
+      }));
+
+      await canvasService.syncToDatabase(user.id);
+      
+      // Reload data after sync
+      await loadData();
+      
+      window.dispatchEvent(new CustomEvent('app-toast', { 
+        detail: { message: 'Canvas grades synced successfully!', type: 'success' } 
+      }));
+    } catch (error) {
+      console.error('Error syncing Canvas grades:', error);
+      window.dispatchEvent(new CustomEvent('app-toast', { 
+        detail: { message: 'Failed to sync Canvas grades', type: 'error' } 
+      }));
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -160,13 +213,25 @@ export function GradeTracker() {
           <p className="text-gray-600 mt-1">Monitor your academic progress and stay on track</p>
         </div>
         
-        <button
-          onClick={() => setShowAddCourse(true)}
-          className="mt-4 sm:mt-0 bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center space-x-2 shadow-sm"
-        >
-          <Plus className="h-5 w-5" />
-          <span>Add Course</span>
-        </button>
+        <div className="mt-4 sm:mt-0 flex space-x-3">
+          {canvasConnected && (
+            <button
+              onClick={syncCanvasGrades}
+              disabled={syncing}
+              className="bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center space-x-2 shadow-sm disabled:opacity-50"
+            >
+              <RefreshCw className={`h-5 w-5 ${syncing ? 'animate-spin' : ''}`} />
+              <span>{syncing ? 'Syncing...' : 'Sync Canvas'}</span>
+            </button>
+          )}
+          <button
+            onClick={() => setShowAddCourse(true)}
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center space-x-2 shadow-sm"
+          >
+            <Plus className="h-5 w-5" />
+            <span>Add Course</span>
+          </button>
+        </div>
       </div>
 
       {/* GPA Overview */}
