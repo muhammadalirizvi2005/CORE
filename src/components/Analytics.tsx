@@ -233,22 +233,28 @@ export function Analytics() {
           
           <div className="space-y-4">
             {weeklyData.map((day, index) => {
-              const completionRate = (day.completed / day.total) * 100;
+              const completionRate = day.total > 0 ? (day.completed / day.total) * 100 : 0;
               return (
                 <div key={index} className="flex items-center space-x-4">
                   <div className="w-12 text-sm font-medium text-gray-600">{day.day}</div>
                   <div className="flex-1 bg-gray-200 rounded-full h-6 relative">
-                    <div
-                      className="bg-blue-600 h-6 rounded-full flex items-center justify-end pr-2"
-                      style={{ width: `${completionRate}%` }}
-                    >
+                    {day.total > 0 ? (
+                      <div
+                        className="bg-blue-600 h-6 rounded-full flex items-center justify-end pr-2"
+                        style={{ width: `${completionRate}%` }}
+                      >
                         <span className="text-white text-xs font-medium">
-                        {`${day.completed}/${day.total}`}
-                      </span>
-                    </div>
+                          {`${day.completed}/${day.total}`}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-6">
+                        <span className="text-gray-500 text-xs">No tasks</span>
+                      </div>
+                    )}
                   </div>
                   <div className="w-16 text-sm text-gray-600 text-right">
-                    {Math.round(completionRate)}%
+                    {day.total > 0 ? `${Math.round(completionRate)}%` : '-'}
                   </div>
                 </div>
               );
@@ -258,7 +264,26 @@ export function Analytics() {
           <div className="mt-6 p-4 bg-blue-50 rounded-lg">
             <h3 className="font-medium text-blue-900 mb-2">💡 Insight</h3>
             <p className="text-sm text-blue-800">
-              Your productivity peaks on Monday and Wednesday. Consider scheduling important tasks on these days!
+              {(() => {
+                if (weeklyData.every(day => day.total === 0)) {
+                  return "Start adding tasks to see your weekly productivity patterns!";
+                }
+                
+                // Find the most productive day
+                const bestDay = weeklyData.reduce((best, current) => {
+                  const currentRate = current.total > 0 ? (current.completed / current.total) : 0;
+                  const bestRate = best.total > 0 ? (best.completed / best.total) : 0;
+                  return currentRate > bestRate ? current : best;
+                }, weeklyData[0]);
+                
+                const bestRate = bestDay.total > 0 ? Math.round((bestDay.completed / bestDay.total) * 100) : 0;
+                
+                if (bestRate === 0) {
+                  return "Complete some tasks to start tracking your productivity patterns!";
+                }
+                
+                return `Your most productive day this week was ${bestDay.day} with ${bestRate}% completion rate. Try scheduling important tasks on similar days!`;
+              })()}
             </p>
           </div>
         </div>
@@ -453,11 +478,52 @@ export function Analytics() {
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold text-purple-900">Check-in Streak</h3>
                   <span className="text-2xl font-bold text-purple-700">
-                    {wellnessEntries.length}
+                    {(() => {
+                      // Calculate consecutive day streak
+                      let streak = 0;
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      
+                      for (let i = 0; i < 30; i++) {
+                        const checkDate = new Date(today);
+                        checkDate.setDate(checkDate.getDate() - i);
+                        const dateStr = checkDate.toISOString().split('T')[0];
+                        
+                        const hasEntry = wellnessEntries.some(entry => entry.entry_date === dateStr);
+                        
+                        if (hasEntry) {
+                          streak++;
+                        } else if (i > 0) {
+                          break;
+                        }
+                      }
+                      
+                      return streak;
+                    })()}
                   </span>
                 </div>
                 <p className="text-sm text-purple-800">
-                  {wellnessEntries.length >= 7 ? '🔥 Great consistency!' : '💪 Keep it up!'}
+                  {(() => {
+                    let streak = 0;
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    
+                    for (let i = 0; i < 30; i++) {
+                      const checkDate = new Date(today);
+                      checkDate.setDate(checkDate.getDate() - i);
+                      const dateStr = checkDate.toISOString().split('T')[0];
+                      
+                      const hasEntry = wellnessEntries.some(entry => entry.entry_date === dateStr);
+                      
+                      if (hasEntry) {
+                        streak++;
+                      } else if (i > 0) {
+                        break;
+                      }
+                    }
+                    
+                    return streak >= 7 ? '🔥 Great consistency!' : streak >= 3 ? '💪 Keep it up!' : '📅 Start building a streak!';
+                  })()}
                 </p>
               </div>
 
