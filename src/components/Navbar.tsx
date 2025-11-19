@@ -39,10 +39,10 @@ export function Navbar({ currentView, onViewChange, currentUser, onLogout }: Nav
   }, []);
   const navItems = [
     { id: 'dashboard' as ViewType, icon: Home, label: 'Dashboard' },
-    { id: 'tasks' as ViewType, icon: CheckSquare, label: 'Tasks' },
+    { id: 'canvas' as ViewType, icon: GraduationCap, label: 'Canvas' },
     { id: 'pomodoro' as ViewType, icon: Clock, label: 'Pomodoro' },
-  { id: 'wellness' as ViewType, icon: Heart, label: 'Wellness' },
-    { id: 'grades' as ViewType, icon: GraduationCap, label: 'Grades' },
+    { id: 'wellness' as ViewType, icon: Heart, label: 'Wellness' },
+    { id: 'grades' as ViewType, icon: CheckSquare, label: 'Grades' },
     { id: 'analytics' as ViewType, icon: BarChart3, label: 'Analytics' },
     { id: 'settings' as ViewType, icon: Settings, label: 'Settings' },
   ];

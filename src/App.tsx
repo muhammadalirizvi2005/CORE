@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { LandingPage } from './components/LandingPage';
 import { LoginForm } from './components/LoginForm';
 import { Dashboard } from './components/Dashboard';
-import { TaskManager } from './components/TaskManager';
+import { Canvas } from './components/Canvas';
 import { WellnessTracker } from './components/WellnessTracker';
 import { Analytics } from './components/Analytics';
 import { Settings } from './components/Settings';
@@ -15,7 +15,7 @@ import { AIChatbot } from './components/AIChatbot';
 import { authService } from './lib/auth';
 import type { User } from '@supabase/supabase-js';
 
-export type ViewType = 'landing' | 'login' | 'dashboard' | 'tasks' | 'wellness' | 'analytics' | 'settings' | 'pomodoro' | 'grades';
+export type ViewType = 'landing' | 'login' | 'dashboard' | 'canvas' | 'wellness' | 'analytics' | 'settings' | 'pomodoro' | 'grades';
 
 function App() {
   const [currentView, setCurrentView] = useState<ViewType>('landing');
@@ -72,8 +72,8 @@ function App() {
         return <LoginForm onLogin={handleLogin} />;
       case 'dashboard':
         return <Dashboard />;
-      case 'tasks':
-        return <TaskManager />;
+      case 'canvas':
+        return <Canvas />;
       case 'wellness':
         return <WellnessTracker />;
       case 'analytics':
