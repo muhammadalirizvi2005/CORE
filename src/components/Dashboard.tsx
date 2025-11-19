@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, CheckSquare, Flame, BarChart3, Timer, BookOpen, Settings, Brain } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Calendar, CheckSquare, Flame, BarChart3, Timer, BookOpen, Brain } from 'lucide-react';
 import { authService } from '../lib/auth';
 import { databaseService } from '../lib/database';
+import type { User } from '@supabase/supabase-js';
 
 export function Dashboard() {
-  const [user, setUser] = useState(authService.getCurrentUser());
+  const [user] = useState<User | null>(authService.getCurrentUser());
   const [stats, setStats] = useState({
     totalTasks: 0,
     completedTasks: 0,
@@ -63,7 +64,7 @@ export function Dashboard() {
       {/* Welcome Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">
-          Welcome back, {user?.full_name || 'Student'}! 👋
+          Welcome back, {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Student'}! 👋
         </h1>
         <p className="text-gray-600 mt-1">Here's your productivity overview for today</p>
       </div>

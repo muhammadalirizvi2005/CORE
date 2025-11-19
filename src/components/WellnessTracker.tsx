@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Heart, Brain, Coffee, Moon, Activity, TrendingUp } from 'lucide-react';
 import { databaseService, type WellnessEntry } from '../lib/database';
 import { authService } from '../lib/auth';
@@ -11,7 +10,6 @@ export function WellnessTracker() {
   const [notes, setNotes] = useState<string>('');
   const [todayEntry, setTodayEntry] = useState<WellnessEntry | null>(null);
   const [recentEntries, setRecentEntries] = useState<WellnessEntry[]>([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadWellnessData();
@@ -37,8 +35,6 @@ export function WellnessTracker() {
       }
     } catch (error) {
       console.error('Error loading wellness data:', error);
-    } finally {
-      setLoading(false);
     }
   };
 

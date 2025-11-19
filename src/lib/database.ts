@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import type { User } from './supabase';
 
 // Types for database entities
 export interface Task {

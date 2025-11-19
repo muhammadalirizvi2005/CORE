@@ -94,6 +94,7 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
 
   // Canvas/Calendar/Email persisted connections (use state so UI updates immediately)
   const [canvasBaseUrl, setCanvasBaseUrl] = React.useState<string | null>(null);
+  // @ts-ignore - Used through getCalendarUrl()
   const [calendarUrl, setCalendarUrl] = React.useState<string | null>(null);
   const [emailWebUrlState, setEmailWebUrlState] = React.useState<string | null>(null);
   const [canvasConnected, setCanvasConnected] = React.useState<boolean>(false);
@@ -157,11 +158,6 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
     } else {
       dispatchToast('Canvas disconnected locally', 'info');
     }
-  };
-
-  const getEmailWebUrl = (): string | null => {
-    const saved = localStorage.getItem('emailWebUrl');
-    return saved && saved.startsWith('https://') ? saved : null;
   };
 
   const getCalendarUrl = (): string | null => {

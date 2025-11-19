@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { BookOpen, TrendingUp, Target, Award, Plus, CreditCard as Edit, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { BookOpen, TrendingUp, Target, Award, Plus, CreditCard as Edit } from 'lucide-react';
 import { databaseService, type Course, type Assignment } from '../lib/database';
 import { authService } from '../lib/auth';
 import { supabase } from '../lib/supabase';
@@ -7,7 +7,6 @@ import { supabase } from '../lib/supabase';
 export function GradeTracker() {
   const [showAddCourse, setShowAddCourse] = useState(false);
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
-  const [selectedCourse, setSelectedCourse] = useState<string>('');
   const [courses, setCourses] = useState<Course[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -296,7 +295,10 @@ export function GradeTracker() {
               
               {courseAssignments.length > 3 && (
                 <button
-                  onClick={() => setSelectedCourse(course.id)}
+                  onClick={() => {
+                    // Future: Navigate to detailed view
+                    console.log('View all assignments for course:', course.id);
+                  }}
                   className="text-blue-600 text-xs mt-2 hover:text-blue-700"
                 >
                   View all {courseAssignments.length} assignments
