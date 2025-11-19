@@ -96,6 +96,44 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
   const [canvasBaseUrl, setCanvasBaseUrl] = React.useState<string | null>(null);
   const [canvasConnected, setCanvasConnected] = React.useState<boolean>(false);
 
+  // Course platform links
+  type CourseLink = {
+    id: string;
+    name: string;
+    url: string;
+    platform: string;
+  };
+
+  const [courseLinks, setCourseLinks] = React.useState<CourseLink[]>(() => {
+    const saved = localStorage.getItem('courseLinks');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const addCourseLink = (name: string, url: string, platform: string) => {
+    const newLink: CourseLink = {
+      id: Date.now().toString(),
+      name,
+      url,
+      platform
+    };
+    const updated = [...courseLinks, newLink];
+    setCourseLinks(updated);
+    localStorage.setItem('courseLinks', JSON.stringify(updated));
+    dispatchToast('Course link added', 'success');
+  };
+
+  const removeCourseLink = (id: string) => {
+    const updated = courseLinks.filter(link => link.id !== id);
+    setCourseLinks(updated);
+    localStorage.setItem('courseLinks', JSON.stringify(updated));
+    dispatchToast('Course link removed', 'success');
+  };
+
+  const [addLinkModalOpen, setAddLinkModalOpen] = React.useState(false);
+  const [newLinkName, setNewLinkName] = React.useState('');
+  const [newLinkUrl, setNewLinkUrl] = React.useState('');
+  const [newLinkPlatform, setNewLinkPlatform] = React.useState('Moodle');
+
   const handleCanvasSubmit = (input: string) => {
     if (!input) return closeModal();
     const url = input.startsWith('http') ? input : `https://${input}`;
@@ -413,6 +451,61 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
           </div>
         </div>
 
+        {/* Course Platform Links */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                <Calendar className="h-5 w-5 text-gray-600 mr-2" />
+                Course Platform Links
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">Add links to Moodle, Blackboard, or other course platforms</p>
+            </div>
+            <button
+              onClick={() => setAddLinkModalOpen(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            >
+              + Add Link
+            </button>
+          </div>
+          
+          <div className="space-y-3">
+            {courseLinks.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Calendar className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                <p className="text-sm">No course platform links added yet</p>
+                <p className="text-xs text-gray-400">Add links to Moodle, Blackboard, or other platforms</p>
+              </div>
+            ) : (
+              courseLinks.map((link) => (
+                <div key={link.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2">
+                      <h3 className="font-medium text-gray-900">{link.name}</h3>
+                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{link.platform}</span>
+                    </div>
+                    <p className="text-sm text-gray-500 truncate mt-1">{link.url}</p>
+                  </div>
+                  <div className="flex items-center space-x-2 ml-4">
+                    <button
+                      onClick={() => openExternal(link.url)}
+                      className="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                    >
+                      Open
+                    </button>
+                    <button
+                      onClick={() => removeCourseLink(link.id)}
+                      className="bg-red-50 text-red-600 px-3 py-1 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
         {/* Appearance */}
         <div className="bg-white rounded-xl shadow-sm p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
@@ -477,6 +570,87 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
         </div>
       </div>
         {renderModal()}
+        
+        {/* Add Course Link Modal */}
+        {addLinkModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Add Course Platform Link</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Course Name</label>
+                  <input
+                    type="text"
+                    value={newLinkName}
+                    onChange={(e) => setNewLinkName(e.target.value)}
+                    placeholder="e.g., Computer Science 101"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Platform</label>
+                  <select
+                    value={newLinkPlatform}
+                    onChange={(e) => setNewLinkPlatform(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="Moodle">Moodle</option>
+                    <option value="Blackboard">Blackboard</option>
+                    <option value="Google Classroom">Google Classroom</option>
+                    <option value="Brightspace">Brightspace</option>
+                    <option value="Schoology">Schoology</option>
+                    <option value="Sakai">Sakai</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Course URL</label>
+                  <input
+                    type="url"
+                    value={newLinkUrl}
+                    onChange={(e) => setNewLinkUrl(e.target.value)}
+                    placeholder="https://moodle.university.edu/course/..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex space-x-3 mt-6">
+                <button
+                  onClick={() => {
+                    if (newLinkName && newLinkUrl) {
+                      const url = newLinkUrl.startsWith('http') ? newLinkUrl : `https://${newLinkUrl}`;
+                      addCourseLink(newLinkName, url, newLinkPlatform);
+                      setNewLinkName('');
+                      setNewLinkUrl('');
+                      setNewLinkPlatform('Moodle');
+                      setAddLinkModalOpen(false);
+                    } else {
+                      dispatchToast('Please fill in all fields', 'error');
+                    }
+                  }}
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  Add Link
+                </button>
+                <button
+                  onClick={() => {
+                    setNewLinkName('');
+                    setNewLinkUrl('');
+                    setNewLinkPlatform('Moodle');
+                    setAddLinkModalOpen(false);
+                  }}
+                  className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
   );
 }

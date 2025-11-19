@@ -13,6 +13,11 @@ export function GradeTracker() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [canvasConnected, setCanvasConnected] = useState(false);
+  const [deansListGPA, setDeansListGPA] = useState<number>(() => {
+    const saved = localStorage.getItem('deansListGPA');
+    return saved ? parseFloat(saved) : 3.5;
+  });
+  const [editingDeansListGPA, setEditingDeansListGPA] = useState(false);
   const [newCourse, setNewCourse] = useState({
     name: '',
     code: '',
@@ -267,10 +272,51 @@ export function GradeTracker() {
         </div>
         
         <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-6 rounded-xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-orange-600 text-sm font-medium">Dean's List</p>
-              <p className="text-lg font-bold text-orange-900">{currentGPA >= 3.5 ? 'Eligible' : 'Not Yet'}</p>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex-1">
+              <p className="text-orange-600 text-sm font-medium mb-1">Dean's List</p>
+              {editingDeansListGPA ? (
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="4.0"
+                    value={deansListGPA}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      if (!isNaN(value) && value >= 0 && value <= 4.0) {
+                        setDeansListGPA(value);
+                        localStorage.setItem('deansListGPA', value.toString());
+                      }
+                    }}
+                    className="w-20 px-2 py-1 text-lg font-bold text-orange-900 bg-white border border-orange-300 rounded focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  />
+                  <button
+                    onClick={() => setEditingDeansListGPA(false)}
+                    className="text-xs bg-orange-600 text-white px-2 py-1 rounded hover:bg-orange-700"
+                  >
+                    Done
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <p className="text-lg font-bold text-orange-900">
+                    {currentGPA >= deansListGPA ? '✅ Eligible' : '❌ Not Yet'}
+                  </p>
+                  <button
+                    onClick={() => setEditingDeansListGPA(true)}
+                    className="text-xs text-orange-600 hover:text-orange-700 underline"
+                  >
+                    (Req: {deansListGPA.toFixed(2)})
+                  </button>
+                </div>
+              )}
+              <p className="text-xs text-orange-700 mt-1">
+                {currentGPA >= deansListGPA 
+                  ? `Your GPA exceeds the requirement!` 
+                  : `Need ${(deansListGPA - currentGPA).toFixed(2)} more`}
+              </p>
             </div>
             <Award className="h-8 w-8 text-orange-600" />
           </div>
