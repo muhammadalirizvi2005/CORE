@@ -92,13 +92,9 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
     window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: 'Profile saved', type: 'success' } }));
   };
 
-  // Canvas/Calendar/Email persisted connections (use state so UI updates immediately)
+  // Canvas persisted connections (use state so UI updates immediately)
   const [canvasBaseUrl, setCanvasBaseUrl] = React.useState<string | null>(null);
-  // @ts-ignore - Used through getCalendarUrl()
-  const [calendarUrl, setCalendarUrl] = React.useState<string | null>(null);
-  const [emailWebUrlState, setEmailWebUrlState] = React.useState<string | null>(null);
   const [canvasConnected, setCanvasConnected] = React.useState<boolean>(false);
-  const [calendarConnected, setCalendarConnected] = React.useState<boolean>(false);
 
   const handleCanvasSubmit = (input: string) => {
     if (!input) return closeModal();
@@ -160,88 +156,9 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
     }
   };
 
-  const getCalendarUrl = (): string | null => {
-    const saved = localStorage.getItem('calendarUrl');
-    return saved && saved.startsWith('http') ? saved : null;
-  };
-
   const getCanvasBaseUrl = (): string | null => {
     const saved = localStorage.getItem('canvasBaseUrl');
     return saved && saved.startsWith('http') ? saved : null;
-  };
-
-  const handleEmailSubmit = (input: string) => {
-    if (!input) return closeModal();
-    const url = input.startsWith('http') ? input : `https://${input}`;
-    try {
-      const u = new URL(url);
-      const saved = `${u.protocol}//${u.hostname}`;
-      localStorage.setItem('emailWebUrl', saved);
-      setEmailWebUrlState(saved);
-      closeModal();
-      } catch {
-      dispatchToast('Please enter a valid URL.', 'error');
-    }
-  };
-
-  const openEmail = () => {
-    if (emailWebUrlState) return openExternal(emailWebUrlState);
-    openModal('Connect Email', 'mail.google.com or outlook.office.com', '', handleEmailSubmit);
-  };
-
-  // Google Calendar persistence
-  const handleCalendarSubmit = (input: string) => {
-    if (!input) return closeModal();
-    const url = input.startsWith('http') ? input : `https://${input}`;
-    try {
-      const u = new URL(url);
-      const saved = `${u.protocol}//${u.hostname}${u.pathname}`;
-      localStorage.setItem('calendarUrl', saved);
-      setCalendarUrl(saved);
-      const user = authService.getCurrentUser();
-      if (user) {
-        authService.updateUserConnections(user.id, { calendar_url: saved, calendar_connected: true })
-          .then(() => dispatchToast('Calendar connection saved', 'success'))
-          .catch((err) => {
-            console.error('Error saving calendar connection to Supabase:', err);
-            dispatchToast('Saved locally but failed to persist to server', 'error');
-          });
-      } else {
-        dispatchToast('Calendar connection saved locally', 'success');
-      }
-      closeModal();
-    } catch {
-      dispatchToast('Please enter a valid URL.', 'error');
-    }
-  };
-
-  const openCalendar = () => {
-    const oauthServer = import.meta.env.VITE_OAUTH_SERVER;
-    const user = authService.getCurrentUser();
-    if (oauthServer && user) {
-      const startUrl = `${oauthServer.replace(/\/$/, '')}/oauth/google/start?state=${encodeURIComponent(user.id)}`;
-      dispatchToast('Redirecting to Google to connect your calendar...', 'info');
-      window.location.href = startUrl;
-      return;
-    }
-
-    openModal('Connect Google Calendar', 'calendar.google.com/..', '', handleCalendarSubmit);
-  };
-
-  const disconnectCalendar = () => {
-    localStorage.removeItem('calendarUrl');
-    setCalendarUrl(null);
-    const user = authService.getCurrentUser();
-    if (user) {
-      authService.updateUserConnections(user.id, { calendar_url: null, calendar_connected: false })
-        .then(() => dispatchToast('Google Calendar disconnected', 'success'))
-        .catch((err) => {
-          console.error('Error clearing calendar connection on server:', err);
-          dispatchToast('Disconnected locally but failed to update server', 'error');
-        });
-    } else {
-      dispatchToast('Google Calendar disconnected locally', 'info');
-    }
   };
 
   // Load notifications, profile, and connection URLs from localStorage on mount
@@ -267,13 +184,9 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
       graduationYear: savedGrad || prev.graduationYear,
     }));
 
-    // Load persisted connections (local)
+    // Load persisted Canvas connection (local)
     const savedCanvas = localStorage.getItem('canvasBaseUrl');
-    const savedCalendar = localStorage.getItem('calendarUrl');
-    const savedEmailWeb = localStorage.getItem('emailWebUrl');
     setCanvasBaseUrl(savedCanvas && (savedCanvas.startsWith('http') ? savedCanvas : null));
-    setCalendarUrl(savedCalendar && (savedCalendar.startsWith('http') ? savedCalendar : null));
-    setEmailWebUrlState(savedEmailWeb && (savedEmailWeb.startsWith('http') ? savedEmailWeb : null));
 
     // If logged in, hydrate from server so users don't need to relink
     const u = authService.getCurrentUser();
@@ -282,14 +195,9 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
         .then((conns) => {
           // Update local state and localStorage to keep Navbar and other components in sync
           setCanvasConnected(Boolean(conns.canvas_connected));
-          setCalendarConnected(Boolean(conns.calendar_connected));
           if (conns.canvas_base_url) {
             localStorage.setItem('canvasBaseUrl', conns.canvas_base_url);
             setCanvasBaseUrl(conns.canvas_base_url);
-          }
-          if (conns.calendar_url) {
-            localStorage.setItem('calendarUrl', conns.calendar_url);
-            setCalendarUrl(conns.calendar_url);
           }
         })
         .catch((err) => {
@@ -300,13 +208,12 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
     // Handle OAuth callback query flags, show toast and refresh connections
     const params = new URLSearchParams(window.location.search);
     const oauthResult = params.get('oauth');
-    if (oauthResult === 'google_success' || oauthResult === 'canvas_success') {
-      dispatchToast(`${oauthResult.startsWith('canvas') ? 'Canvas' : 'Google Calendar'} connected`, 'success');
+    if (oauthResult === 'canvas_success') {
+      dispatchToast('Canvas connected', 'success');
       if (u) {
         authService.fetchUserConnections(u.id)
           .then((conns) => {
             setCanvasConnected(Boolean(conns.canvas_connected));
-            setCalendarConnected(Boolean(conns.calendar_connected));
             if (conns.canvas_base_url) {
               localStorage.setItem('canvasBaseUrl', conns.canvas_base_url);
               setCanvasBaseUrl(conns.canvas_base_url);
@@ -452,43 +359,10 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
         <div className="bg-white rounded-xl shadow-sm p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
             <Calendar className="h-5 w-5 text-gray-600 mr-2" />
-            Calendar & Career Integration
+            Integration & Resources
           </h2>
           
           <div className="space-y-4">
-            <div className="p-4 border border-gray-200 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-medium text-gray-900">Google Calendar</h3>
-                  <p className="text-sm text-gray-600">Sync tasks and deadlines with your Google Calendar</p>
-                </div>
-                {calendarConnected || getCalendarUrl() ? (
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-green-600">Connected</span>
-                    <button
-                      onClick={openCalendar}
-                      className="bg-blue-600 text-white px-3 py-1 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                    >
-                      Open
-                    </button>
-                    <button
-                      onClick={disconnectCalendar}
-                      className="bg-red-50 text-red-600 px-3 py-1 rounded-lg font-medium hover:bg-red-100 transition-colors"
-                    >
-                      Disconnect
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={openCalendar}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                  >
-                    Connect
-                  </button>
-                )}
-              </div>
-            </div>
-            
             <div className="p-4 border border-gray-200 rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
@@ -530,21 +404,6 @@ export function Settings({ currentUser, onLogout }: SettingsProps) {
                 </div>
                 <button
                   onClick={() => openExternal('https://app.joinhandshake.com')}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                >
-                  Open
-                </button>
-              </div>
-            </div>
-
-            <div className="p-4 border border-gray-200 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-medium text-gray-900">Email</h3>
-                  <p className="text-sm text-gray-600">Open your email provider (Gmail, Outlook, etc.)</p>
-                </div>
-                <button
-                  onClick={openEmail}
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
                 >
                   Open
