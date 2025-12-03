@@ -80,6 +80,45 @@ export interface StudyGroup {
   creator_name?: string;
 }
 
+export interface UserProfile {
+  id: string;
+  username: string;
+  email: string;
+  full_name: string;
+  university: string | null;
+  graduation_year: string | null;
+  deans_list_gpa: number;
+  notifications: {
+    assignment_due: boolean;
+    grade_updates: boolean;
+    wellness_reminders: boolean;
+  };
+  theme: 'light' | 'dark' | 'auto';
+  pomodoro_custom_times: {
+    work: number;
+    shortBreak: number;
+    longBreak: number;
+  };
+}
+
+export interface CourseLink {
+  id: string;
+  user_id: string;
+  name: string;
+  url: string;
+  platform: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuickNote {
+  id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // Database service functions
 export const databaseService = {
   // Helper to log supabase errors with operation context
@@ -356,5 +395,104 @@ export const databaseService = {
 
     this._logAndThrow('getUserStudyGroups', error);
     return (data || []).map(member => member.group_id);
+  },
+
+  // User Profile
+  async getUserProfile(userId: string): Promise<UserProfile | null> {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, username, email, full_name, university, graduation_year, deans_list_gpa, notifications, theme, pomodoro_custom_times')
+      .eq('id', userId)
+      .single();
+
+    this._logAndThrow('getUserProfile', error);
+    return data;
+  },
+
+  async updateUserProfile(userId: string, updates: Partial<UserProfile>): Promise<void> {
+    const { error } = await supabase
+      .from('users')
+      .update(updates)
+      .eq('id', userId);
+
+    this._logAndThrow('updateUserProfile', error);
+  },
+
+  // Course Links
+  async getCourseLinks(userId: string): Promise<CourseLink[]> {
+    const { data, error } = await supabase
+      .from('course_links')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    this._logAndThrow('getCourseLinks', error);
+    return data || [];
+  },
+
+  async createCourseLink(userId: string, link: Omit<CourseLink, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<CourseLink> {
+    const { data, error } = await supabase
+      .from('course_links')
+      .insert([{ ...link, user_id: userId }])
+      .select()
+      .single();
+
+    this._logAndThrow('createCourseLink', error);
+    return data;
+  },
+
+  async deleteCourseLink(linkId: string): Promise<void> {
+    const { error } = await supabase
+      .from('course_links')
+      .delete()
+      .eq('id', linkId);
+
+    this._logAndThrow('deleteCourseLink', error);
+  },
+
+  // Quick Notes
+  async getQuickNotes(userId: string): Promise<QuickNote[]> {
+    const { data, error } = await supabase
+      .from('quick_notes')
+      .select('*')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false });
+
+    this._logAndThrow('getQuickNotes', error);
+    return data || [];
+  },
+
+  async saveQuickNote(userId: string, content: string, noteId?: string): Promise<QuickNote> {
+    if (noteId) {
+      // Update existing note
+      const { data, error } = await supabase
+        .from('quick_notes')
+        .update({ content })
+        .eq('id', noteId)
+        .select()
+        .single();
+
+      this._logAndThrow('updateQuickNote', error);
+      return data;
+    } else {
+      // Create new note
+      const { data, error } = await supabase
+        .from('quick_notes')
+        .insert([{ user_id: userId, content }])
+        .select()
+        .single();
+
+      this._logAndThrow('createQuickNote', error);
+      return data;
+    }
+  },
+
+  async deleteQuickNote(noteId: string): Promise<void> {
+    const { error } = await supabase
+      .from('quick_notes')
+      .delete()
+      .eq('id', noteId);
+
+    this._logAndThrow('deleteQuickNote', error);
   }
 };
